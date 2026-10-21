@@ -1,0 +1,359 @@
+@import 'leaflet/dist/leaflet.css';
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  color-scheme: light;
+  --color-bg: #f8fafc;
+  --color-surface: #ffffff;
+  --color-surface-hover: #f1f5f9;
+  --color-surface-subtle: #f8fafc;
+  --color-border: #cbd5e1;
+  --color-border-subtle: #e2e8f0;
+  /* High contrast readable text in light mode - never faint */
+  --color-text-primary: #0f172a;
+  --color-text-secondary: #334155;
+  --color-text-muted: #475569;
+  --color-brand: #026fc7;
+  --color-brand-hover: #0358a1;
+  --color-brand-subtle: #eff6ff;
+  --color-brand-text: #026fc7;
+  --color-success: #16a34a;
+  --color-success-subtle: #f0fdf4;
+  --color-success-text: #15803d;
+  --color-warning: #d97706;
+  --color-warning-subtle: #fffbeb;
+  --color-warning-text: #b45309;
+  --color-error: #dc2626;
+  --color-error-subtle: #fef2f2;
+  --color-error-text: #b91c1c;
+}
+
+.dark {
+  color-scheme: dark;
+  /* Soft dark grays - never pure #000 */
+  --color-bg: #0f172a;
+  --color-surface: #1e293b;
+  --color-surface-hover: #334155;
+  --color-surface-subtle: #162032;
+  --color-border: #334155;
+  --color-border-subtle: #1e293b;
+  /* Off-white readable text - never pure #fff */
+  --color-text-primary: #f8fafc;
+  --color-text-secondary: #cbd5e1;
+  --color-text-muted: #94a3b8;
+  --color-brand: #38a8f8;
+  --color-brand-hover: #7cc7fb;
+  --color-brand-subtle: #0f2744;
+  --color-brand-text: #7cc7fb;
+  --color-success: #22c55e;
+  --color-success-subtle: #064e3b;
+  --color-success-text: #4ade80;
+  --color-warning: #f59e0b;
+  --color-warning-subtle: #451a03;
+  --color-warning-text: #fbbf24;
+  --color-error: #ef4444;
+  --color-error-subtle: #450a0a;
+  --color-error-text: #f87171;
+}
+
+/* Explicit Core Semantic Theme Utility Classes */
+.bg-theme-brand {
+  background-color: var(--color-brand) !important;
+}
+.hover\:bg-theme-brand-hover:hover,
+.bg-theme-brand-hover:hover {
+  background-color: var(--color-brand-hover) !important;
+}
+.bg-theme-brand-subtle {
+  background-color: var(--color-brand-subtle) !important;
+}
+.text-theme-brand {
+  color: var(--color-brand) !important;
+}
+.text-theme-primary {
+  color: var(--color-text-primary) !important;
+}
+.text-theme-secondary {
+  color: var(--color-text-secondary) !important;
+}
+.text-theme-muted {
+  color: var(--color-text-muted) !important;
+}
+.bg-theme-bg {
+  background-color: var(--color-bg) !important;
+}
+.bg-theme-surface {
+  background-color: var(--color-surface) !important;
+}
+.bg-theme-surface-hover {
+  background-color: var(--color-surface-hover) !important;
+}
+.bg-theme-surface-subtle {
+  background-color: var(--color-surface-subtle) !important;
+}
+.border-theme-border {
+  border-color: var(--color-border) !important;
+}
+.border-theme-border-subtle {
+  border-color: var(--color-border-subtle) !important;
+}
+
+body {
+  font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  margin: 0;
+  min-height: 100vh;
+  background-color: var(--color-bg);
+  color: var(--color-text-primary);
+  /* Smooth color transition without causing layout shift or flicker */
+  transition: background-color 0.15s ease, color 0.15s ease;
+}
+
+/* Text Selection */
+::selection {
+  background-color: var(--color-brand);
+  color: #ffffff;
+}
+
+/* Custom scrollbars matching theme */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+::-webkit-scrollbar-track {
+  background: var(--color-bg);
+}
+::-webkit-scrollbar-thumb {
+  background: var(--color-border);
+  border-radius: 4px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--color-surface-hover);
+}
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--color-border) var(--color-bg);
+}
+
+/* Universal Form Controls - guaranteed readable text in both themes */
+input:not([type='checkbox']):not([type='radio']),
+select,
+textarea {
+  background-color: var(--color-surface);
+  border-color: var(--color-border);
+  color: var(--color-text-primary);
+}
+
+input::placeholder,
+textarea::placeholder {
+  color: var(--color-text-muted);
+  opacity: 1;
+}
+
+option {
+  background-color: var(--color-surface);
+  color: var(--color-text-primary);
+}
+
+/* Images in dark mode: reduce glare softly without washing out */
+.dark img {
+  opacity: 0.92;
+  transition: opacity 0.2s ease;
+}
+.dark img:hover {
+  opacity: 1;
+}
+
+/* Leaflet Map styles */
+.leaflet-container {
+  background: #f1f5f9;
+}
+.leaflet-popup-content-wrapper {
+  background: var(--color-surface) !important;
+  color: var(--color-text-primary) !important;
+  border: 1px solid var(--color-border);
+  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+  border-radius: 12px;
+}
+.leaflet-popup-tip {
+  background: var(--color-surface) !important;
+}
+
+@keyframes leaflet-radar {
+  0% {
+    transform: scale(0.6);
+    opacity: 0.8;
+  }
+  100% {
+    transform: scale(1.8);
+    opacity: 0;
+  }
+}
+
+/* Dark theme filter for OpenStreetMap tiles - zero API key required */
+.dark .leaflet-container {
+  background: #0f172a;
+}
+.dark .leaflet-tile-pane {
+  filter: invert(100%) hue-rotate(180deg) brightness(95%) contrast(90%);
+}
+.dark .leaflet-bar a {
+  background-color: #1e293b;
+  color: #f8fafc;
+  border-bottom-color: #334155;
+}
+.dark .leaflet-bar a:hover {
+  background-color: #334155;
+  color: #ffffff;
+}
+.dark .leaflet-control-attribution {
+  background-color: rgba(15, 23, 42, 0.8) !important;
+  color: #94a3b8 !important;
+}
+.dark .leaflet-control-attribution a {
+  color: #38a8f8 !important;
+}
+.dark .leaflet-popup-content-wrapper {
+  background: #1e293b !important;
+  color: #f8fafc !important;
+  border: 1px solid #334155;
+  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.5);
+}
+.dark .leaflet-popup-tip {
+  background: #1e293b !important;
+}
+.dark .leaflet-popup-close-button {
+  color: #94a3b8 !important;
+}
+.dark .leaflet-popup-close-button:hover {
+  color: #f8fafc !important;
+}
+
+/* Interactive Leaflet Popups */
+.leaflet-popup-content-wrapper,
+.leaflet-popup-content,
+.pg-map-popup {
+  pointer-events: auto !important;
+}
+.leaflet-popup-content button,
+.leaflet-popup-content a,
+.leaflet-popup-content [role='button'] {
+  cursor: pointer !important;
+  pointer-events: auto !important;
+}
+
+/* Dark Mode Global Cascade Rules for Tables, Cards, Inputs, and Badges */
+@layer utilities {
+  .dark .bg-white {
+    background-color: var(--color-surface) !important;
+  }
+  .dark .bg-slate-50,
+  .dark .bg-gray-50 {
+    background-color: var(--color-surface-subtle) !important;
+  }
+  .dark .bg-slate-100,
+  .dark .bg-gray-100 {
+    background-color: var(--color-surface-hover) !important;
+  }
+  .dark .text-slate-900,
+  .dark .text-gray-900,
+  .dark .text-slate-800,
+  .dark .text-gray-800 {
+    color: var(--color-text-primary) !important;
+  }
+  .dark .text-slate-700,
+  .dark .text-gray-700,
+  .dark .text-slate-600,
+  .dark .text-gray-600 {
+    color: var(--color-text-secondary) !important;
+  }
+  .dark .text-slate-500,
+  .dark .text-gray-500,
+  .dark .text-slate-400,
+  .dark .text-gray-400 {
+    color: var(--color-text-muted) !important;
+  }
+  .dark .border-slate-200,
+  .dark .border-gray-200,
+  .dark .border-slate-100,
+  .dark .border-gray-100,
+  .dark .border-slate-300,
+  .dark .border-gray-300 {
+    border-color: var(--color-border) !important;
+  }
+  .dark .divide-slate-200 > :not([hidden]) ~ :not([hidden]),
+  .dark .divide-slate-100 > :not([hidden]) ~ :not([hidden]) {
+    border-color: var(--color-border) !important;
+  }
+
+  /* Form controls focus */
+  input:focus,
+  select:focus,
+  textarea:focus {
+    border-color: var(--color-brand) !important;
+    outline: none !important;
+    box-shadow: 0 0 0 2px rgba(2, 111, 199, 0.25) !important;
+  }
+  .dark input:focus,
+  .dark select:focus,
+  .dark textarea:focus {
+    border-color: var(--color-brand) !important;
+    outline: none !important;
+    box-shadow: 0 0 0 2px rgba(56, 168, 248, 0.25) !important;
+  }
+
+  /* Status Badges in dark mode */
+  .dark .bg-emerald-50 {
+    background-color: rgba(6, 78, 59, 0.4) !important;
+  }
+  .dark .text-emerald-700,
+  .dark .text-emerald-800 {
+    color: #4ade80 !important;
+  }
+  .dark .border-emerald-200 {
+    border-color: rgba(34, 197, 94, 0.3) !important;
+  }
+
+  .dark .bg-amber-50,
+  .dark .bg-amber-50\/50,
+  .dark .bg-amber-100 {
+    background-color: rgba(69, 26, 3, 0.4) !important;
+  }
+  .dark .text-amber-700,
+  .dark .text-amber-800,
+  .dark .text-amber-900 {
+    color: #fbbf24 !important;
+  }
+  .dark .border-amber-200 {
+    border-color: rgba(245, 158, 11, 0.3) !important;
+  }
+
+  .dark .bg-rose-50,
+  .dark .bg-rose-100 {
+    background-color: rgba(69, 10, 10, 0.4) !important;
+  }
+  .dark .text-rose-700,
+  .dark .text-rose-800 {
+    color: #f87171 !important;
+  }
+  .dark .border-rose-200 {
+    border-color: rgba(239, 68, 68, 0.3) !important;
+  }
+
+  .dark .bg-blue-50,
+  .dark .bg-indigo-50 {
+    background-color: rgba(30, 58, 138, 0.3) !important;
+  }
+  .dark .text-indigo-700 {
+    color: #a5b4fc !important;
+  }
+  .dark .border-indigo-200 {
+    border-color: rgba(99, 102, 241, 0.3) !important;
+  }
+
+  /* Skeleton loaders */
+  .dark .animate-pulse {
+    background-color: #334155;
+  }
+}

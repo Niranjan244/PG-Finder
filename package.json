@@ -1,0 +1,11 @@
+{
+  "name": "pg-finder",
+  "version": "1.0.0",
+  "private": true,
+  "description": "PG Finder Fullstack Monorepo Application",
+  "scripts": {
+    "server:dev": "npm --prefix server run dev",
+    "client:dev": "npm --prefix client run dev",
+    "build:client": "npm --prefix client run build"
+  }
+}
