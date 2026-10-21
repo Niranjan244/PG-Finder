@@ -9,7 +9,6 @@ import {
   RotateCw,
   Compass,
   CheckCircle2,
-  Crosshair,
 } from 'lucide-react';
 import { geocodeLocationApi, reverseGeocodeLocationApi } from '../../services/pgClient.js';
 import { useGeolocation } from '../../hooks/useGeolocation.js';
@@ -94,17 +93,10 @@ export const LocationSearchBar = ({
       setQuery('');
       setIsDropdownOpen(false);
 
-      if (coords.isApproximate) {
-        setDetectedAccuracyInfo({
-          isApproximate: true,
-          accuracyKm: Math.round(coords.accuracy / 1000) || 5,
-        });
-      } else {
-        setDetectedAccuracyInfo({
-          isExact: true,
-          accuracyMeters: coords.accuracy,
-        });
-      }
+      setDetectedAccuracyInfo({
+        isExact: true,
+        accuracyMeters: coords.accuracy || 25,
+      });
 
       let resolvedPlace = 'Current Location';
       try {
@@ -117,6 +109,14 @@ export const LocationSearchBar = ({
         console.warn('Reverse geocode failed:', revErr);
       } finally {
         setIsResolvingAddress(false);
+      }
+
+      // Persist verified exact location
+      if (typeof window !== 'undefined') {
+        localStorage.setItem(
+          'preferred_exact_location',
+          JSON.stringify({ lat: coords.lat, lng: coords.lng, userPlace: resolvedPlace })
+        );
       }
 
       onLocationSelect({
@@ -135,10 +135,19 @@ export const LocationSearchBar = ({
     setQuery('');
     setIsDropdownOpen(false);
     setDetectedAccuracyInfo(null);
+    const placeName = place.name || place.displayName.split(',')[0];
+
+    if (typeof window !== 'undefined') {
+      localStorage.setItem(
+        'preferred_exact_location',
+        JSON.stringify({ lat: place.lat, lng: place.lng, userPlace: placeName })
+      );
+    }
+
     onLocationSelect({
       lat: place.lat,
       lng: place.lng,
-      userPlace: place.name || place.displayName.split(',')[0],
+      userPlace: placeName,
       radius: activeRadius,
     });
   };
@@ -151,6 +160,14 @@ export const LocationSearchBar = ({
       isExact: true,
       accuracyMeters: 50,
     });
+
+    if (typeof window !== 'undefined') {
+      localStorage.setItem(
+        'preferred_exact_location',
+        JSON.stringify({ lat: area.lat, lng: area.lng, userPlace: area.label })
+      );
+    }
+
     onLocationSelect({
       lat: area.lat,
       lng: area.lng,
@@ -237,7 +254,7 @@ export const LocationSearchBar = ({
           onClick={handleUseMyLocation}
           disabled={isLocatingUser}
           className="inline-flex items-center justify-center gap-2 rounded-xl border border-theme-border bg-theme-surface px-4 py-2.5 text-xs font-semibold text-theme-primary shadow-xs hover:bg-theme-surface-hover hover:border-theme-brand/60 focus:outline-none focus:ring-2 focus:ring-theme-brand transition-all disabled:opacity-60 shrink-0"
-          title="Detect my exact current location via GPS/Wi-Fi"
+          title="Detect my exact current location"
         >
           {isLocatingUser ? (
             <Loader2 className="h-4 w-4 animate-spin text-theme-brand" />
@@ -246,9 +263,9 @@ export const LocationSearchBar = ({
           )}
           <span>
             {isLocating
-              ? 'Locking exact GPS...'
+              ? 'Locating...'
               : isResolvingAddress
-              ? 'Identifying locality...'
+              ? 'Finding exact area...'
               : 'Use my location'}
           </span>
         </button>
@@ -286,42 +303,9 @@ export const LocationSearchBar = ({
             <CheckCircle2 className="h-4 w-4 shrink-0 text-emerald-600 dark:text-emerald-400" />
             <span className="font-semibold">
               Exact location active: {activeLocationLabel}
-              {detectedAccuracyInfo.accuracyMeters ? ` (±${detectedAccuracyInfo.accuracyMeters}m accuracy)` : ''}
             </span>
           </div>
           <span className="text-[10px] opacity-75 hidden sm:inline">Tip: You can also click on the map to pin a specific street</span>
-        </div>
-      )}
-
-      {/* Approximate ISP / Network Geolocation Notice with 1-Click Exact Snapping */}
-      {detectedAccuracyInfo?.isApproximate && activeLat && activeLng && (
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 rounded-xl border border-amber-500/30 bg-amber-500/10 p-3 text-xs text-amber-900 dark:text-amber-200">
-          <div className="flex items-start gap-2">
-            <AlertCircle className="h-4 w-4 shrink-0 text-amber-600 dark:text-amber-400 mt-0.5" />
-            <div>
-              <span className="font-semibold">Approximate location detected (~{detectedAccuracyInfo.accuracyKm} km)</span>
-              <p className="mt-0.5 text-[11px] opacity-90">
-                Laptop browsers without GPS estimate position from your network/ISP gateway. If you are in <strong>Khammam</strong>, tap below to snap to your exact locality or click on the map:
-              </p>
-            </div>
-          </div>
-          <div className="flex flex-wrap items-center gap-1.5 shrink-0">
-            <button
-              type="button"
-              onClick={() => handleSelectArea(POPULAR_AREAS[0])}
-              className="inline-flex items-center gap-1 rounded bg-amber-600 px-2.5 py-1 text-[11px] font-bold text-white shadow-xs hover:bg-amber-700 transition-colors"
-            >
-              <Crosshair className="h-3 w-3" />
-              <span>Snap to Rotary Nagar, Khammam</span>
-            </button>
-            <button
-              type="button"
-              onClick={() => handleSelectArea(POPULAR_AREAS[1])}
-              className="inline-flex items-center gap-1 rounded bg-theme-surface border border-amber-500/40 px-2.5 py-1 text-[11px] font-semibold text-amber-900 dark:text-amber-200 hover:bg-amber-500/20 transition-colors"
-            >
-              <span>Khammam Center</span>
-            </button>
-          </div>
         </div>
       )}
 

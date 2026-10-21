@@ -119,6 +119,13 @@ export const SearchPage = () => {
       console.warn('Reverse geocode failed on map pin:', e);
     }
 
+    if (typeof window !== 'undefined') {
+      localStorage.setItem(
+        'preferred_exact_location',
+        JSON.stringify({ lat, lng, userPlace: resolvedPlace })
+      );
+    }
+
     handleLocationSelect({
       lat,
       lng,

@@ -2,6 +2,7 @@ import React from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
 import { MainLayout } from '../layouts/MainLayout.jsx';
 import { HomePage } from '../pages/HomePage.jsx';
+import { LoginPage } from '../pages/auth/LoginPage.jsx';
 import { RegisterPage } from '../pages/auth/RegisterPage.jsx';
 import { ForgotPasswordPage } from '../pages/auth/ForgotPasswordPage.jsx';
 import { ResetPasswordPage } from '../pages/auth/ResetPasswordPage.jsx';
@@ -23,14 +24,16 @@ import { OwnerBookingsPage } from '../pages/owner/OwnerBookingsPage.jsx';
 import { ChatPage } from '../pages/chat/ChatPage.jsx';
 import { WishlistPage } from '../pages/wishlist/WishlistPage.jsx';
 
-// Redirect authenticated users away from auth forms directly into PG Finder
+// Redirect authenticated users away from public auth forms directly to their dashboard
 const PublicAuthRoute = ({ children }) => {
-  const { isAuthenticated, isLoading } = useAuth();
+  const { user, isAuthenticated, isLoading } = useAuth();
 
   if (isLoading) return null;
 
-  if (isAuthenticated) {
-    return <Navigate to="/search" replace />;
+  if (isAuthenticated && user) {
+    if (user.role === 'admin') return <Navigate to="/dashboard/admin" replace />;
+    if (user.role === 'owner') return <Navigate to="/dashboard/owner" replace />;
+    return <Navigate to="/dashboard/tenant" replace />;
   }
 
   return children;
@@ -39,10 +42,19 @@ const PublicAuthRoute = ({ children }) => {
 export const AppRoutes = () => {
   return (
     <Routes>
-      <Route path="/" element={<MainLayout />}>
-        {/* Landing Page with Embedded Login */}
-        <Route index element={<HomePage />} />
-        <Route path="login" element={<Navigate to="/" replace />} />
+      {/* Standalone Landing Page (includes its own dedicated Figma-style Navbar & Footer) */}
+      <Route path="/" element={<HomePage />} />
+
+      {/* Main Layout routes */}
+      <Route element={<MainLayout />}>
+        <Route
+          path="login"
+          element={
+            <PublicAuthRoute>
+              <LoginPage />
+            </PublicAuthRoute>
+          }
+        />
         <Route
           path="register"
           element={

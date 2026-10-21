@@ -21,7 +21,7 @@ export const useGeolocation = () => {
     setError(null);
     setErrorCode(null);
 
-    // 1. Check if browser supports Geolocation
+    // 1. Check if browser supports Geolocation API
     if (!navigator || !navigator.geolocation) {
       const msg = 'Geolocation is not supported by your browser.';
       setError(msg);
@@ -45,7 +45,6 @@ export const useGeolocation = () => {
 
     setIsLocating(true);
 
-    // Clean up any pending watch before starting a new one
     if (activeWatchIdRef.current !== null) {
       navigator.geolocation.clearWatch(activeWatchIdRef.current);
       activeWatchIdRef.current = null;
@@ -71,13 +70,10 @@ export const useGeolocation = () => {
 
         setIsLocating(false);
 
-        const accuracy = Math.round(position.coords.accuracy);
         const coords = {
           lat: Number(position.coords.latitude.toFixed(6)),
           lng: Number(position.coords.longitude.toFixed(6)),
-          accuracy,
-          isExact: accuracy <= 200,
-          isApproximate: accuracy > 1500, // Coarse IP or ISP gateway estimate
+          accuracy: Math.round(position.coords.accuracy),
         };
 
         setCoordinates(coords);
@@ -106,12 +102,12 @@ export const useGeolocation = () => {
         switch (err.code) {
           case 1: // PERMISSION_DENIED
             friendlyMessage =
-              'Location access was denied. Please allow location permissions in your browser bar, or enter your area name below.';
+              'Location access was denied. Please allow location permissions in your browser address bar.';
             codeName = 'PERMISSION_DENIED';
             break;
           case 2: // POSITION_UNAVAILABLE
             friendlyMessage =
-              'Location information is unavailable. Check your device GPS or network connection, or search by area.';
+              'Location information is unavailable. Check your device GPS or network connection.';
             codeName = 'POSITION_UNAVAILABLE';
             break;
           case 3: // TIMEOUT
@@ -128,42 +124,40 @@ export const useGeolocation = () => {
         reject(new Error(friendlyMessage));
       };
 
-      // Watch position to give Wi-Fi scanning / GPS time to settle to highest accuracy
+      // Request highest possible accuracy from device hardware / GPS / Wi-Fi
       try {
         const watchId = navigator.geolocation.watchPosition(
           (position) => {
             const acc = position.coords.accuracy;
 
-            // Track reading with the highest accuracy (smallest radius in meters)
             if (!bestPosition || acc < bestPosition.coords.accuracy) {
               bestPosition = position;
             }
 
-            // High-accuracy fix (<= 65 meters, true GPS or Wi-Fi AP triangulation): lock immediately
-            if (acc <= 65) {
+            // If hardware GPS locks with high accuracy (<= 50 meters), finish immediately
+            if (acc <= 50) {
               finishWithPosition(position);
               return;
             }
 
-            // Moderate fix (<= 300 meters): settle within 1.2 seconds if no finer reading arrives
-            if (acc <= 300 && !settleTimer) {
+            // Settle on the best fix if stable
+            if (acc <= 200 && !settleTimer) {
               settleTimer = setTimeout(() => {
                 if (bestPosition) {
                   finishWithPosition(bestPosition);
                 }
-              }, 1200);
+              }, 1000);
             }
           },
           (err) => {
-            // If watch threw an error but we already captured a best reading, use it
             if (bestPosition) {
               finishWithPosition(bestPosition);
             } else {
-              // Try fallback to standard single-shot getCurrentPosition
+              // Fallback to standard single-shot request
               navigator.geolocation.getCurrentPosition(
                 (pos) => finishWithPosition(pos),
                 (singleErr) => finishWithError(singleErr || err),
-                { enableHighAccuracy: false, timeout: 8000, maximumAge: 60000 }
+                { enableHighAccuracy: true, timeout: 6000, maximumAge: 0 }
               );
             }
           },
@@ -176,19 +170,17 @@ export const useGeolocation = () => {
 
         activeWatchIdRef.current = watchId;
 
-        // Maximum wait time: 4 seconds to allow Wi-Fi AP scan without hanging the UI
         maxTimeoutTimer = setTimeout(() => {
           if (bestPosition) {
             finishWithPosition(bestPosition);
           } else {
-            // Settle with standard single-shot if watch didn't yield any position
             navigator.geolocation.getCurrentPosition(
               (pos) => finishWithPosition(pos),
               (timeoutErr) => finishWithError(timeoutErr || { code: 3, message: 'Timed out' }),
-              { enableHighAccuracy: false, timeout: 5000, maximumAge: 30000 }
+              { enableHighAccuracy: true, timeout: 4000, maximumAge: 0 }
             );
           }
-        }, 4000);
+        }, 3500);
       } catch (e) {
         finishWithError(e);
       }
