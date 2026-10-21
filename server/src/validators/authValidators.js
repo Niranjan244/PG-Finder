@@ -54,3 +54,12 @@ export const resetPasswordSchema = z.object({
     .regex(/[0-9]/, { message: 'Password must contain at least one numeric digit' })
     .regex(/[a-zA-Z]/, { message: 'Password must contain at least one letter' }),
 });
+
+export const firebaseAuthSchema = z.object({
+  idToken: z.string().min(1, { message: 'Firebase ID token is required' }),
+  role: z
+    .enum(['tenant', 'owner'], {
+      errorMap: () => ({ message: 'Role must be either tenant or owner' }),
+    })
+    .optional(),
+});

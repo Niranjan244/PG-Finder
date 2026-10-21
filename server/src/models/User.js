@@ -23,17 +23,35 @@ const userSchema = new mongoose.Schema(
     },
     phone: {
       type: String,
-      required: [true, 'Contact phone number is required'],
-      trim: true,
-      match: [
-        /^[0-9+()-\s]{7,20}$/,
-        'Please provide a valid contact phone number',
+      required: [
+        function () {
+          return this.authProvider !== 'google';
+        },
+        'Contact phone number is required',
       ],
+      trim: true,
+      default: '',
     },
     passwordHash: {
       type: String,
-      required: [true, 'Password hash is required'],
+      required: [
+        function () {
+          return this.authProvider !== 'google';
+        },
+        'Password hash is required',
+      ],
       select: false,
+    },
+    firebaseUid: {
+      type: String,
+      unique: true,
+      sparse: true,
+      index: true,
+    },
+    authProvider: {
+      type: String,
+      enum: ['local', 'google'],
+      default: 'local',
     },
     role: {
       type: String,

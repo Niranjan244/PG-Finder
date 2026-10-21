@@ -48,6 +48,11 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
+  const setAuthUser = (userData) => {
+    setUser(userData);
+    return userData;
+  };
+
   const value = {
     user,
     role: user?.role || null,
@@ -56,6 +61,7 @@ export const AuthProvider = ({ children }) => {
     login,
     register,
     logout,
+    setAuthUser,
     checkAuth,
   };
 

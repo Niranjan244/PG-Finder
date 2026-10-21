@@ -8,14 +8,17 @@ import {
   AlertCircle,
   RotateCw,
   Compass,
+  CheckCircle2,
+  Crosshair,
 } from 'lucide-react';
 import { geocodeLocationApi, reverseGeocodeLocationApi } from '../../services/pgClient.js';
 import { useGeolocation } from '../../hooks/useGeolocation.js';
 
 const RADIUS_OPTIONS = [1, 2, 5, 10, 20, 50, 100];
 
-const POPULAR_CITIES = [
-  { name: 'Khammam', label: 'Khammam', lat: 17.2465, lng: 80.1500 },
+export const POPULAR_AREAS = [
+  { name: 'Rotary Nagar, Khammam', label: 'Rotary Nagar (Khammam)', lat: 17.2482, lng: 80.1745 },
+  { name: 'Khammam', label: 'Khammam Center', lat: 17.2465, lng: 80.1500 },
   { name: 'Bengaluru', label: 'Bengaluru', lat: 12.9716, lng: 77.5946 },
   { name: 'Hyderabad', label: 'Hyderabad', lat: 17.3850, lng: 78.4867 },
 ];
@@ -97,7 +100,10 @@ export const LocationSearchBar = ({
           accuracyKm: Math.round(coords.accuracy / 1000) || 5,
         });
       } else {
-        setDetectedAccuracyInfo(null);
+        setDetectedAccuracyInfo({
+          isExact: true,
+          accuracyMeters: coords.accuracy,
+        });
       }
 
       let resolvedPlace = 'Current Location';
@@ -120,7 +126,7 @@ export const LocationSearchBar = ({
         radius: activeRadius,
       });
     } catch (err) {
-      // Error handled by hook and displayed below
+      // Error is caught by hook and displayed in geoError banner
     }
   };
 
@@ -137,15 +143,18 @@ export const LocationSearchBar = ({
     });
   };
 
-  // Handle selecting a popular city pill
-  const handleSelectCity = (city) => {
+  // Handle selecting a popular area pill
+  const handleSelectArea = (area) => {
     setQuery('');
     setIsDropdownOpen(false);
-    setDetectedAccuracyInfo(null);
+    setDetectedAccuracyInfo({
+      isExact: true,
+      accuracyMeters: 50,
+    });
     onLocationSelect({
-      lat: city.lat,
-      lng: city.lng,
-      userPlace: city.label,
+      lat: area.lat,
+      lng: area.lng,
+      userPlace: area.label,
       radius: activeRadius,
     });
   };
@@ -179,7 +188,7 @@ export const LocationSearchBar = ({
               placeholder={
                 activeLocationLabel
                   ? `Near: ${activeLocationLabel} (Search another area...)`
-                  : 'Search landmark, college, or area (e.g. Koramangala, Hitech City)...'
+                  : 'Search landmark, college, or area (e.g. Rotary Nagar, Khammam, Koramangala)...'
               }
               className="w-full rounded-xl border border-theme-border bg-theme-surface py-2.5 pl-10 pr-10 text-xs text-theme-primary placeholder-theme-muted shadow-xs focus:border-theme-brand focus:outline-none focus:ring-1 focus:ring-theme-brand transition-colors"
             />
@@ -222,13 +231,13 @@ export const LocationSearchBar = ({
           )}
         </div>
 
-        {/* "Use My Location" Button */}
+        {/* "Use My Location" Button with High Accuracy Detection */}
         <button
           type="button"
           onClick={handleUseMyLocation}
           disabled={isLocatingUser}
           className="inline-flex items-center justify-center gap-2 rounded-xl border border-theme-border bg-theme-surface px-4 py-2.5 text-xs font-semibold text-theme-primary shadow-xs hover:bg-theme-surface-hover hover:border-theme-brand/60 focus:outline-none focus:ring-2 focus:ring-theme-brand transition-all disabled:opacity-60 shrink-0"
-          title="Detect my current location"
+          title="Detect my exact current location via GPS/Wi-Fi"
         >
           {isLocatingUser ? (
             <Loader2 className="h-4 w-4 animate-spin text-theme-brand" />
@@ -237,25 +246,25 @@ export const LocationSearchBar = ({
           )}
           <span>
             {isLocating
-              ? 'Locating...'
+              ? 'Locking exact GPS...'
               : isResolvingAddress
-              ? 'Identifying area...'
+              ? 'Identifying locality...'
               : 'Use my location'}
           </span>
         </button>
       </div>
 
-      {/* Quick City Shortcuts */}
+      {/* Quick Locality / City Shortcuts */}
       <div className="flex flex-wrap items-center gap-2 pt-0.5 text-xs text-theme-muted">
-        <span className="text-[11px] font-medium text-theme-secondary">Quick cities:</span>
+        <span className="text-[11px] font-medium text-theme-secondary">Quick areas:</span>
         <div className="flex flex-wrap items-center gap-1.5">
-          {POPULAR_CITIES.map((city) => {
-            const isSelected = activeLocationLabel?.toLowerCase().includes(city.name.toLowerCase());
+          {POPULAR_AREAS.map((area) => {
+            const isSelected = activeLocationLabel?.toLowerCase().includes(area.name.toLowerCase());
             return (
               <button
-                key={city.name}
+                key={area.name}
                 type="button"
-                onClick={() => handleSelectCity(city)}
+                onClick={() => handleSelectArea(area)}
                 className={`inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-[11px] font-semibold border transition-all ${
                   isSelected
                     ? 'bg-theme-brand text-white border-theme-brand shadow-xs'
@@ -263,32 +272,56 @@ export const LocationSearchBar = ({
                 }`}
               >
                 <MapPin className="h-3 w-3" />
-                <span>{city.name}</span>
+                <span>{area.label}</span>
               </button>
             );
           })}
         </div>
       </div>
 
-      {/* Approximate ISP / Network Geolocation Notice */}
+      {/* High-Accuracy GPS Fix Confirmation */}
+      {detectedAccuracyInfo?.isExact && activeLat && activeLng && (
+        <div className="flex items-center justify-between gap-3 rounded-xl border border-emerald-500/30 bg-emerald-500/10 px-3 py-2 text-xs text-emerald-800 dark:text-emerald-200">
+          <div className="flex items-center gap-2">
+            <CheckCircle2 className="h-4 w-4 shrink-0 text-emerald-600 dark:text-emerald-400" />
+            <span className="font-semibold">
+              Exact location active: {activeLocationLabel}
+              {detectedAccuracyInfo.accuracyMeters ? ` (±${detectedAccuracyInfo.accuracyMeters}m accuracy)` : ''}
+            </span>
+          </div>
+          <span className="text-[10px] opacity-75 hidden sm:inline">Tip: You can also click on the map to pin a specific street</span>
+        </div>
+      )}
+
+      {/* Approximate ISP / Network Geolocation Notice with 1-Click Exact Snapping */}
       {detectedAccuracyInfo?.isApproximate && activeLat && activeLng && (
-        <div className="flex items-start justify-between gap-3 rounded-xl border border-sky-500/30 bg-sky-500/10 p-3 text-xs text-sky-800 dark:text-sky-200">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 rounded-xl border border-amber-500/30 bg-amber-500/10 p-3 text-xs text-amber-900 dark:text-amber-200">
           <div className="flex items-start gap-2">
-            <AlertCircle className="h-4 w-4 shrink-0 text-sky-600 dark:text-sky-400 mt-0.5" />
+            <AlertCircle className="h-4 w-4 shrink-0 text-amber-600 dark:text-amber-400 mt-0.5" />
             <div>
-              <span className="font-semibold">Detected via Internet Provider (approximate location)</span>
+              <span className="font-semibold">Approximate location detected (~{detectedAccuracyInfo.accuracyKm} km)</span>
               <p className="mt-0.5 text-[11px] opacity-90">
-                Laptop and desktop browsers estimate location from your Wi-Fi / Reliance Jio gateway (~{detectedAccuracyInfo.accuracyKm} km radius). If you are in <strong>Khammam</strong> or another city, click the quick city pill above or type your locality in the search bar.
+                Laptop browsers without GPS estimate position from your network/ISP gateway. If you are in <strong>Khammam</strong>, tap below to snap to your exact locality or click on the map:
               </p>
             </div>
           </div>
-          <button
-            type="button"
-            onClick={() => handleSelectCity(POPULAR_CITIES[0])}
-            className="inline-flex items-center gap-1 rounded bg-sky-600 px-2 py-1 text-[11px] font-semibold text-white shadow-xs hover:bg-sky-700 shrink-0"
-          >
-            <span>Set to Khammam</span>
-          </button>
+          <div className="flex flex-wrap items-center gap-1.5 shrink-0">
+            <button
+              type="button"
+              onClick={() => handleSelectArea(POPULAR_AREAS[0])}
+              className="inline-flex items-center gap-1 rounded bg-amber-600 px-2.5 py-1 text-[11px] font-bold text-white shadow-xs hover:bg-amber-700 transition-colors"
+            >
+              <Crosshair className="h-3 w-3" />
+              <span>Snap to Rotary Nagar, Khammam</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => handleSelectArea(POPULAR_AREAS[1])}
+              className="inline-flex items-center gap-1 rounded bg-theme-surface border border-amber-500/40 px-2.5 py-1 text-[11px] font-semibold text-amber-900 dark:text-amber-200 hover:bg-amber-500/20 transition-colors"
+            >
+              <span>Khammam Center</span>
+            </button>
+          </div>
         </div>
       )}
 
@@ -301,7 +334,7 @@ export const LocationSearchBar = ({
               <span className="font-semibold">{geoError}</span>
               {errorCode === 'PERMISSION_DENIED' && (
                 <p className="mt-0.5 text-[11px] opacity-90">
-                  Tip: Look for the location pin or lock icon in your browser address bar to allow location access.
+                  Tip: Look for the location pin or lock icon in your browser address bar to allow location access, or select an area pill above.
                 </p>
               )}
             </div>

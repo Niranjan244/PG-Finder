@@ -23,3 +23,7 @@ export const forgotPasswordApi = async (email) => {
 export const resetPasswordApi = async ({ token, password }) => {
   return await apiClient.post('/auth/reset-password', { token, password });
 };
+
+export const firebaseAuthApi = async ({ idToken, role }) => {
+  return await apiClient.post('/auth/firebase', { idToken, role });
+};

@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
-import { searchPGsApi } from '../../services/pgClient.js';
+import { searchPGsApi, reverseGeocodeLocationApi } from '../../services/pgClient.js';
 import { FilterSidebar } from '../../components/search/FilterSidebar.jsx';
 import { PGCard } from '../../components/search/PGCard.jsx';
 import { PGMap } from '../../components/search/PGMap.jsx';
@@ -105,6 +105,25 @@ export const SearchPage = () => {
       swLng: bounds.swLng,
       neLat: bounds.neLat,
       neLng: bounds.neLng,
+    });
+  };
+
+  const handleMapClickPin = async ({ lat, lng }) => {
+    let resolvedPlace = 'Pinned Location';
+    try {
+      const res = await reverseGeocodeLocationApi(lat, lng);
+      if (res?.data?.data?.placeName) {
+        resolvedPlace = res.data.data.placeName;
+      }
+    } catch (e) {
+      console.warn('Reverse geocode failed on map pin:', e);
+    }
+
+    handleLocationSelect({
+      lat,
+      lng,
+      userPlace: resolvedPlace,
+      radius: currentRadius,
     });
   };
 
@@ -389,6 +408,7 @@ export const SearchPage = () => {
                     listings={listings}
                     userLocation={userLocationObj}
                     onSearchInArea={handleSearchInArea}
+                    onMapClickPin={handleMapClickPin}
                   />
                 </div>
               )}
@@ -408,6 +428,7 @@ export const SearchPage = () => {
                       listings={listings}
                       userLocation={userLocationObj}
                       onSearchInArea={handleSearchInArea}
+                      onMapClickPin={handleMapClickPin}
                     />
                   </div>
                 </div>

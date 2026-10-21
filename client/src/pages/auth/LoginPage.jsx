@@ -4,6 +4,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext.jsx';
 import { loginSchema } from '../../validators/authSchemas.js';
+import { GoogleSignInButton } from '../../components/auth/GoogleSignInButton.jsx';
 import { LogIn, AlertCircle, Loader2 } from 'lucide-react';
 
 export const LoginPage = () => {
@@ -60,6 +61,8 @@ export const LoginPage = () => {
             <span>{serverError}</span>
           </div>
         )}
+
+        <GoogleSignInButton onErrorMessage={setServerError} />
 
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-5" autoComplete="off">
           <div>

@@ -4,6 +4,7 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useAuth } from '../context/AuthContext.jsx';
 import { loginSchema } from '../validators/authSchemas.js';
+import { GoogleSignInButton } from '../components/auth/GoogleSignInButton.jsx';
 import {
   Building2,
   ShieldCheck,
@@ -219,6 +220,8 @@ export const HomePage = () => {
                   <span>{serverError}</span>
                 </div>
               )}
+
+              <GoogleSignInButton onErrorMessage={setServerError} />
 
               <form onSubmit={handleSubmit(onSubmit)} className="space-y-4" autoComplete="off">
                 {/* Email Input */}

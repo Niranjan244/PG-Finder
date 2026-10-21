@@ -9,10 +9,13 @@ build/
 
 # Environment files
 .env
-.env.local
-.env.development.local
-.env.test.local
-.env.production.local
+.env.*
+*.env
+
+# Firebase Service Account Credentials
+*firebase*service*account*.json
+*serviceAccountKey*.json
+*service-account*.json
 
 # Logs
 npm-debug.log*

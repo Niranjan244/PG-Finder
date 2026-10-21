@@ -4,6 +4,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext.jsx';
 import { registerSchema } from '../../validators/authSchemas.js';
+import { GoogleSignInButton } from '../../components/auth/GoogleSignInButton.jsx';
 import { UserPlus, AlertCircle, Loader2, User, Building } from 'lucide-react';
 
 export const RegisterPage = () => {
@@ -57,6 +58,8 @@ export const RegisterPage = () => {
             Join PG Finder to find or manage verified accommodations
           </p>
         </div>
+
+        <GoogleSignInButton onErrorMessage={setServerError} />
 
         {/* Role Selection Tabs */}
         <div>

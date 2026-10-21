@@ -3,6 +3,7 @@ import bcrypt from 'bcryptjs';
 import User from '../models/User.js';
 import { env } from '../config/env.js';
 import { sendPasswordResetEmail } from './emailService.js';
+import { getFirebaseAdmin } from '../config/firebase.js';
 
 const sanitizeUser = (user) => ({
   id: user._id,
@@ -10,6 +11,7 @@ const sanitizeUser = (user) => ({
   email: user.email,
   phone: user.phone,
   role: user.role,
+  authProvider: user.authProvider || 'local',
   createdAt: user.createdAt,
 });
 
@@ -51,6 +53,12 @@ export const loginUser = async ({ email, password }) => {
   if (user.isBlocked) {
     const error = new Error('Your account has been suspended. Please contact support.');
     error.statusCode = 403;
+    throw error;
+  }
+
+  if (!user.passwordHash) {
+    const error = new Error('This account was created with Google Sign-In. Please sign in with Google or reset your password.');
+    error.statusCode = 400;
     throw error;
   }
 
@@ -153,4 +161,89 @@ export const resetPasswordWithToken = async ({ token, password }) => {
   await user.save();
 
   return { success: true };
+};
+
+export const verifyFirebaseToken = async (idToken) => {
+  const firebaseAdmin = getFirebaseAdmin();
+  if (!firebaseAdmin) {
+    const error = new Error('Firebase authentication is not configured on the server.');
+    error.statusCode = 503;
+    throw error;
+  }
+
+  let decodedToken;
+  try {
+    decodedToken = await firebaseAdmin.auth().verifyIdToken(idToken);
+  } catch (err) {
+    const error = new Error('Invalid or expired Google authentication token.');
+    error.statusCode = 401;
+    throw error;
+  }
+
+  if (!decodedToken.email_verified) {
+    const error = new Error('Google email is not verified. Please verify your email with Google.');
+    error.statusCode = 401;
+    throw error;
+  }
+
+  return {
+    firebaseUid: decodedToken.uid,
+    email: decodedToken.email,
+    name: decodedToken.name || decodedToken.displayName || 'Google User',
+  };
+};
+
+export const findOrLinkFirebaseUser = async ({ firebaseUid, email, name, role }) => {
+  const normalizedEmail = email.toLowerCase().trim();
+
+  // 1. Check if user already exists with this firebaseUid
+  let user = await User.findOne({ firebaseUid });
+  if (user) {
+    if (user.isBlocked) {
+      const error = new Error('Your account has been suspended. Please contact support.');
+      error.statusCode = 403;
+      throw error;
+    }
+    return { user: sanitizeUser(user), requiresRole: false };
+  }
+
+  // 2. Check if user exists with the same email (account linking)
+  user = await User.findOne({ email: normalizedEmail });
+  if (user) {
+    if (user.isBlocked) {
+      const error = new Error('Your account has been suspended. Please contact support.');
+      error.statusCode = 403;
+      throw error;
+    }
+    user.firebaseUid = firebaseUid;
+    await user.save();
+    return { user: sanitizeUser(user), requiresRole: false };
+  }
+
+  // 3. New user: role selection is required before account creation
+  if (!role) {
+    return {
+      requiresRole: true,
+      message: 'Please choose whether you are a Tenant or PG Owner',
+      email: normalizedEmail,
+      name,
+    };
+  }
+
+  if (!['tenant', 'owner'].includes(role)) {
+    const error = new Error('Role must be either tenant or owner');
+    error.statusCode = 400;
+    throw error;
+  }
+
+  const newUser = await User.create({
+    name: name?.trim() || 'Google User',
+    email: normalizedEmail,
+    firebaseUid,
+    authProvider: 'google',
+    role,
+    isBlocked: false,
+  });
+
+  return { user: sanitizeUser(newUser), requiresRole: false };
 };

@@ -10,7 +10,7 @@ import {
 } from 'react-leaflet';
 import L from 'leaflet';
 import { useNavigate } from 'react-router-dom';
-import { Building2, Search, Navigation } from 'lucide-react';
+import { Building2, Search, Navigation, MapPin } from 'lucide-react';
 import { useTheme } from '../../context/ThemeContext.jsx';
 
 // Clickable popup card for accommodations with guaranteed event handling inside Leaflet
@@ -129,8 +129,8 @@ const createCustomMarker = (gender = 'coliving', isDark = false) => {
 // Distinct User Position Marker with animated radar pulse
 const createUserMarker = () => {
   const html = `
-    <div style="position: relative; width: 32px; height: 32px; display: flex; align-items: center; justify-content: center;">
-      <div style="position: absolute; width: 28px; height: 28px; border-radius: 50%; background: rgba(2, 111, 199, 0.35); animation: leaflet-radar 2s infinite ease-out;"></div>
+    <div style="position: relative; width: 34px; height: 34px; display: flex; align-items: center; justify-content: center; cursor: grab;">
+      <div style="position: absolute; width: 30px; height: 30px; border-radius: 50%; background: rgba(2, 111, 199, 0.35); animation: leaflet-radar 2s infinite ease-out;"></div>
       <div style="width: 14px; height: 14px; border-radius: 50%; background: #026fc7; border: 3px solid #ffffff; box-shadow: 0 2px 6px rgba(0,0,0,0.35);"></div>
     </div>
   `;
@@ -138,14 +138,14 @@ const createUserMarker = () => {
   return L.divIcon({
     html,
     className: 'user-location-marker',
-    iconSize: [32, 32],
-    iconAnchor: [16, 16],
-    popupAnchor: [0, -16],
+    iconSize: [34, 34],
+    iconAnchor: [17, 17],
+    popupAnchor: [0, -17],
   });
 };
 
-// Child component listening to map movements
-const MapEventsHandler = ({ onBoundsChanged }) => {
+// Child component listening to map movements and map clicks
+const MapEventsHandler = ({ onBoundsChanged, onMapClickPin }) => {
   const map = useMapEvents({
     moveend: () => {
       const bounds = map.getBounds();
@@ -155,6 +155,14 @@ const MapEventsHandler = ({ onBoundsChanged }) => {
         neLat: bounds.getNorth(),
         neLng: bounds.getEast(),
       });
+    },
+    click: (e) => {
+      if (onMapClickPin) {
+        onMapClickPin({
+          lat: Number(e.latlng.lat.toFixed(6)),
+          lng: Number(e.latlng.lng.toFixed(6)),
+        });
+      }
     },
   });
   return null;
@@ -167,11 +175,10 @@ const MapRecenterHandler = ({ userLocation }) => {
   useEffect(() => {
     if (userLocation?.lat && userLocation?.lng) {
       const radiusKm = userLocation.radiusKm || 10;
-      // Appropriate zoom levels for radius ranges
       let zoom = 14;
-      if (radiusKm <= 2) zoom = 14;
-      else if (radiusKm <= 5) zoom = 13;
-      else if (radiusKm <= 10) zoom = 12;
+      if (radiusKm <= 2) zoom = 15;
+      else if (radiusKm <= 5) zoom = 14;
+      else if (radiusKm <= 10) zoom = 13;
       else zoom = 11;
 
       map.setView([userLocation.lat, userLocation.lng], zoom, {
@@ -183,7 +190,12 @@ const MapRecenterHandler = ({ userLocation }) => {
   return null;
 };
 
-export const PGMap = ({ listings = [], userLocation = null, onSearchInArea }) => {
+export const PGMap = ({
+  listings = [],
+  userLocation = null,
+  onSearchInArea,
+  onMapClickPin,
+}) => {
   const { isDark } = useTheme();
   const [pendingBounds, setPendingBounds] = useState(null);
   const [showSearchAreaBtn, setShowSearchAreaBtn] = useState(false);
@@ -231,9 +243,17 @@ export const PGMap = ({ listings = [], userLocation = null, onSearchInArea }) =>
         </div>
       )}
 
+      {/* Click-to-pin hint pill */}
+      <div className="absolute bottom-3 left-3 z-[1000] pointer-events-none">
+        <div className="inline-flex items-center gap-1.5 rounded-full bg-theme-surface/95 text-theme-secondary border border-theme-border px-3 py-1.5 text-[11px] font-medium shadow-md backdrop-blur-xs">
+          <MapPin className="h-3 w-3 text-theme-brand" />
+          <span>Click anywhere or drag blue pin to set exact location</span>
+        </div>
+      </div>
+
       <MapContainer
         center={center}
-        zoom={userLocation ? 13 : 13}
+        zoom={userLocation ? 14 : 13}
         scrollWheelZoom={true}
         closePopupOnClick={false}
         className="h-full w-full"
@@ -244,7 +264,10 @@ export const PGMap = ({ listings = [], userLocation = null, onSearchInArea }) =>
           url={tileUrl}
         />
 
-        <MapEventsHandler onBoundsChanged={handleBoundsChanged} />
+        <MapEventsHandler
+          onBoundsChanged={handleBoundsChanged}
+          onMapClickPin={onMapClickPin}
+        />
         {userLocation && <MapRecenterHandler userLocation={userLocation} />}
 
         {/* User Search Center Marker & Radius Circle */}
@@ -253,18 +276,31 @@ export const PGMap = ({ listings = [], userLocation = null, onSearchInArea }) =>
             <Marker
               position={[userLocation.lat, userLocation.lng]}
               icon={createUserMarker()}
+              draggable={Boolean(onMapClickPin)}
+              eventHandlers={{
+                dragend: (e) => {
+                  if (onMapClickPin) {
+                    const marker = e.target;
+                    const pos = marker.getLatLng();
+                    onMapClickPin({
+                      lat: Number(pos.lat.toFixed(6)),
+                      lng: Number(pos.lng.toFixed(6)),
+                    });
+                  }
+                },
+              }}
             >
               <Popup className="pg-map-popup">
                 <div className="p-1 text-xs">
                   <div className="flex items-center gap-1.5 font-bold text-theme-brand">
                     <Navigation className="h-3.5 w-3.5" />
-                    <span>Search Center</span>
+                    <span>Exact Location Pin</span>
                   </div>
                   <p className="mt-1 text-[11px] text-theme-secondary">
                     {userLocation.placeName || 'Your Location'}
                   </p>
                   <p className="text-[10px] text-theme-muted">
-                    Radius: {userLocation.radiusKm || 10} km
+                    Radius: {userLocation.radiusKm || 10} km &bull; Drag pin to adjust
                   </p>
                 </div>
               </Popup>

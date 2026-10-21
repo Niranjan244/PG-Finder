@@ -4,6 +4,8 @@ import {
   getCurrentUser,
   requestPasswordReset,
   resetPasswordWithToken,
+  verifyFirebaseToken,
+  findOrLinkFirebaseUser,
 } from '../services/authService.js';
 import { generateAuthCookie, clearAuthCookie } from '../utils/token.js';
 import { sendSuccess } from '../utils/apiResponse.js';
@@ -62,6 +64,34 @@ export const resetPassword = async (req, res, next) => {
       password: req.body.password,
     });
     return sendSuccess(res, 200, 'Password successfully reset. You can now log in with your new password.');
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const firebaseAuth = async (req, res, next) => {
+  try {
+    const { idToken, role } = req.body;
+    const tokenPayload = await verifyFirebaseToken(idToken);
+    const result = await findOrLinkFirebaseUser({
+      firebaseUid: tokenPayload.firebaseUid,
+      email: tokenPayload.email,
+      name: tokenPayload.name,
+      role,
+    });
+
+    if (result.requiresRole) {
+      return sendSuccess(res, 200, result.message, {
+        requiresRole: true,
+        email: result.email,
+        name: result.name,
+      });
+    }
+
+    generateAuthCookie(res, result.user.id, result.user.role);
+    return sendSuccess(res, 200, 'Successfully authenticated with Google', {
+      user: result.user,
+    });
   } catch (error) {
     next(error);
   }
