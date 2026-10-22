@@ -91,19 +91,16 @@ export const getCurrentUser = async (userId) => {
 };
 
 export const requestPasswordReset = async (email) => {
-  const normalizedEmail = email.toLowerCase().trim();
-  const user = await User.findOne({ email: normalizedEmail });
-
-  if (!user) {
-    const error = new Error('No account found with this email address.');
-    error.statusCode = 404;
-    throw error;
+  const normalizedEmail = email?.toLowerCase().trim();
+  if (!normalizedEmail) {
+    return { success: true };
   }
 
-  if (user.isBlocked) {
-    const error = new Error('This account has been suspended. Please contact support.');
-    error.statusCode = 403;
-    throw error;
+  const user = await User.findOne({ email: normalizedEmail });
+
+  // Generic return whether or not the account exists (prevents account enumeration)
+  if (!user || user.isBlocked) {
+    return { success: true };
   }
 
   // Generate 32-byte cryptographically secure random token
@@ -127,11 +124,7 @@ export const requestPasswordReset = async (email) => {
     console.warn(`[Background Email] Delivery note: ${mailErr.message}`);
   });
 
-  return {
-    email: user.email,
-    resetToken: rawToken,
-    resetUrl,
-  };
+  return { success: true };
 };
 
 export const resetPasswordWithToken = async ({ token, password }) => {

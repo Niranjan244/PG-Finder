@@ -50,8 +50,8 @@ export const getMe = async (req, res, next) => {
 
 export const forgotPassword = async (req, res, next) => {
   try {
-    const result = await requestPasswordReset(req.body.email);
-    return sendSuccess(res, 200, 'Password reset link sent to your email address.', result);
+    await requestPasswordReset(req.body.email);
+    return res.status(200).json({ success: true });
   } catch (error) {
     next(error);
   }

@@ -12,16 +12,16 @@ export const createOrUpdateReview = async ({ tenantId, pgId, rating, comment }) 
     throw error;
   }
 
-  // 1. Verify that tenant has at least ONE approved booking for this PG
-  const approvedBooking = await Booking.findOne({
+  // 1. Verify that tenant has at least ONE approved or confirmed booking for this PG
+  const eligibleBooking = await Booking.findOne({
     tenant: tenantId,
     pg: pgId,
-    status: 'approved',
+    status: { $in: ['approved', 'confirmed'] },
   });
 
-  if (!approvedBooking) {
+  if (!eligibleBooking) {
     const error = new Error(
-      'Review eligibility failed: Only tenants with an approved booking can review this accommodation.'
+      'Review eligibility failed: Only tenants with an approved or confirmed booking can review this accommodation.'
     );
     error.statusCode = 403;
     throw error;
@@ -127,11 +127,11 @@ export const getPGReviews = async (pgId, { page = 1, limit = 20 } = {}) => {
 };
 
 export const checkTenantReviewEligibility = async (tenantId, pgId) => {
-  const [approvedBooking, existingReview] = await Promise.all([
+  const [eligibleBooking, existingReview] = await Promise.all([
     Booking.findOne({
       tenant: tenantId,
       pg: pgId,
-      status: 'approved',
+      status: { $in: ['approved', 'confirmed'] },
     }).select('_id status moveInDate'),
     Review.findOne({
       tenant: tenantId,
@@ -140,7 +140,7 @@ export const checkTenantReviewEligibility = async (tenantId, pgId) => {
   ]);
 
   return {
-    canReview: Boolean(approvedBooking),
+    canReview: Boolean(eligibleBooking),
     existingReview,
   };
 };

@@ -91,10 +91,12 @@ export const AppRoutes = () => {
           }
         />
 
+        {/* Public General PG Finder Routes (Accessible to guests and authenticated users) */}
+        <Route path="search" element={<SearchPage />} />
+        <Route path="pg/:id" element={<PGDetailsPage />} />
+
         {/* Protected General PG Finder Routes (Accessible to all authenticated roles) */}
         <Route element={<ProtectedRoute />}>
-          <Route path="search" element={<SearchPage />} />
-          <Route path="pg/:id" element={<PGDetailsPage />} />
           <Route path="chat" element={<ChatPage />} />
           <Route path="wishlist" element={<WishlistPage />} />
 
