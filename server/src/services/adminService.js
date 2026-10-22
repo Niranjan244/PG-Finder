@@ -3,6 +3,7 @@ import Room from '../models/Room.js';
 import User from '../models/User.js';
 import Booking from '../models/Booking.js';
 import { createNotification } from './notificationService.js';
+import { getRoomsByPGIds, calculateRoomMetrics } from './roomService.js';
 
 export const getAllPGsForAdmin = async (filters = {}) => {
   const query = {};
@@ -14,22 +15,19 @@ export const getAllPGsForAdmin = async (filters = {}) => {
     .sort({ createdAt: -1 })
     .populate('owner', 'name email phone');
 
-  const enriched = await Promise.all(
-    pgs.map(async (pg) => {
-      const rooms = await Room.find({ pg: pg._id });
-      const totalBeds = rooms.reduce((sum, room) => sum + room.totalBeds, 0);
-      const occupiedBeds = rooms.reduce((sum, room) => sum + room.occupiedBeds, 0);
+  const roomsByPG = await getRoomsByPGIds(pgs.map((pg) => pg._id));
 
-      return {
-        ...pg.toObject(),
-        roomCount: rooms.length,
-        totalBeds,
-        availableBeds: Math.max(0, totalBeds - occupiedBeds),
-      };
-    })
-  );
+  return pgs.map((pg) => {
+    const rooms = roomsByPG.get(pg._id.toString()) || [];
+    const metrics = calculateRoomMetrics(rooms);
 
-  return enriched;
+    return {
+      ...pg.toObject(),
+      roomCount: metrics.roomCount,
+      totalBeds: metrics.totalBeds,
+      availableBeds: metrics.availableBeds,
+    };
+  });
 };
 
 export const updatePGStatusByAdmin = async (pgId, status, rejectionReason = '') => {

@@ -1,5 +1,6 @@
 import PG from '../models/PG.js';
 import Room from '../models/Room.js';
+import { getRoomsByPGIds, calculateRoomMetrics } from './roomService.js';
 
 const getGeoSortStage = (effectiveSort) => {
   if (effectiveSort === 'rent_asc') return { $sort: { 'rentRange.minRent': 1 } };
@@ -261,32 +262,30 @@ export const searchApprovedPGs = async (queryParams) => {
   }
 
   // Attach live room and bed availability summaries, plus human-readable distanceKm
-  const enrichedListings = await Promise.all(
-    rawListings.map(async (pg) => {
-      const rooms = await Room.find({ pg: pg._id });
-      const totalBeds = rooms.reduce((sum, room) => sum + room.totalBeds, 0);
-      const occupiedBeds = rooms.reduce((sum, room) => sum + room.occupiedBeds, 0);
-      const availableBeds = Math.max(0, totalBeds - occupiedBeds);
+  const roomsByPG = await getRoomsByPGIds(rawListings.map((pg) => pg._id));
 
-      const distanceKm =
-        pg.distanceMeters !== undefined && pg.distanceMeters !== null
-          ? Number((pg.distanceMeters / 1000).toFixed(1))
-          : null;
+  const enrichedListings = rawListings.map((pg) => {
+    const rooms = roomsByPG.get(pg._id.toString()) || [];
+    const metrics = calculateRoomMetrics(rooms);
 
-      return {
-        ...pg,
-        distanceKm,
-        distanceMeters: pg.distanceMeters ?? null,
-        roomSummary: {
-          totalRooms: rooms.length,
-          totalBeds,
-          occupiedBeds,
-          availableBeds,
-          isFull: availableBeds === 0 && rooms.length > 0,
-        },
-      };
-    })
-  );
+    const distanceKm =
+      pg.distanceMeters !== undefined && pg.distanceMeters !== null
+        ? Number((pg.distanceMeters / 1000).toFixed(1))
+        : null;
+
+    return {
+      ...pg,
+      distanceKm,
+      distanceMeters: pg.distanceMeters ?? null,
+      roomSummary: {
+        totalRooms: metrics.totalRooms,
+        totalBeds: metrics.totalBeds,
+        occupiedBeds: metrics.occupiedBeds,
+        availableBeds: metrics.availableBeds,
+        isFull: metrics.isFull,
+      },
+    };
+  });
 
   return {
     listings: enrichedListings,

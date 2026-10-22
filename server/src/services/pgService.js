@@ -1,5 +1,6 @@
 import PG from '../models/PG.js';
 import Room from '../models/Room.js';
+import { getRoomsByPGIds, calculateRoomMetrics } from './roomService.js';
 
 export const createOwnerPG = async (ownerId, data) => {
   const { longitude, latitude, ...rest } = data;
@@ -20,39 +21,24 @@ export const createOwnerPG = async (ownerId, data) => {
 export const getOwnerPGs = async (ownerId) => {
   const listings = await PG.find({ owner: ownerId }).sort({ createdAt: -1 });
 
-  // Compute room and occupancy summary for each PG
-  const enrichedListings = await Promise.all(
-    listings.map(async (pg) => {
-      const rooms = await Room.find({ pg: pg._id });
+  const roomsByPG = await getRoomsByPGIds(listings.map((pg) => pg._id));
 
-      let totalBeds = 0;
-      let occupiedBeds = 0;
-      let minRent = 0;
-      let maxRent = 0;
+  return listings.map((pg) => {
+    const rooms = roomsByPG.get(pg._id.toString()) || [];
+    const metrics = calculateRoomMetrics(rooms);
 
-      if (rooms.length > 0) {
-        totalBeds = rooms.reduce((sum, room) => sum + room.totalBeds, 0);
-        occupiedBeds = rooms.reduce((sum, room) => sum + room.occupiedBeds, 0);
-        const rents = rooms.map((room) => room.rent);
-        minRent = Math.min(...rents);
-        maxRent = Math.max(...rents);
-      }
-
-      return {
-        ...pg.toObject(),
-        roomSummary: {
-          totalRooms: rooms.length,
-          totalBeds,
-          occupiedBeds,
-          availableBeds: Math.max(0, totalBeds - occupiedBeds),
-          minRent,
-          maxRent,
-        },
-      };
-    })
-  );
-
-  return enrichedListings;
+    return {
+      ...pg.toObject(),
+      roomSummary: {
+        totalRooms: metrics.totalRooms,
+        totalBeds: metrics.totalBeds,
+        occupiedBeds: metrics.occupiedBeds,
+        availableBeds: metrics.availableBeds,
+        minRent: metrics.minRent,
+        maxRent: metrics.maxRent,
+      },
+    };
+  });
 };
 
 export const getOwnerPGById = async (ownerId, pgId, userRole = 'owner') => {
