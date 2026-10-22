@@ -39,11 +39,30 @@ const bookingSchema = new mongoose.Schema(
     status: {
       type: String,
       enum: {
-        values: ['pending', 'approved', 'rejected', 'cancelled'],
-        message: 'Status must be pending, approved, rejected, or cancelled',
+        values: ['pending', 'approved', 'confirmed', 'rejected', 'cancelled'],
+        message: 'Status must be pending, approved, confirmed, rejected, or cancelled',
       },
       default: 'pending',
       index: true,
+    },
+    paymentStatus: {
+      type: String,
+      enum: {
+        values: ['unpaid', 'paid', 'refunded'],
+        message: 'Payment status must be unpaid, paid, or refunded',
+      },
+      default: 'unpaid',
+      index: true,
+    },
+    holdExpiresAt: {
+      type: Date,
+      default: null,
+      index: true,
+    },
+    payment: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'Payment',
+      default: null,
     },
     rejectionReason: {
       type: String,

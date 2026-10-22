@@ -20,7 +20,10 @@ import { useAuth } from '../context/AuthContext.jsx';
 
 import { SearchPage } from '../pages/search/SearchPage.jsx';
 import { TenantBookingsPage } from '../pages/tenant/TenantBookingsPage.jsx';
+import { TenantPaymentsPage } from '../pages/tenant/TenantPaymentsPage.jsx';
 import { OwnerBookingsPage } from '../pages/owner/OwnerBookingsPage.jsx';
+import { OwnerPaymentsPage } from '../pages/owner/OwnerPaymentsPage.jsx';
+import { AdminPaymentsPage } from '../pages/admin/AdminPaymentsPage.jsx';
 import { ChatPage } from '../pages/chat/ChatPage.jsx';
 import { WishlistPage } from '../pages/wishlist/WishlistPage.jsx';
 
@@ -99,6 +102,7 @@ export const AppRoutes = () => {
           <Route element={<RoleRoute allowedRoles={['tenant']} />}>
             <Route path="dashboard/tenant" element={<TenantDashboard />} />
             <Route path="tenant/bookings" element={<TenantBookingsPage />} />
+            <Route path="tenant/payments" element={<TenantPaymentsPage />} />
           </Route>
 
           {/* Protected PG Owner Routes */}
@@ -109,11 +113,13 @@ export const AppRoutes = () => {
             <Route path="owner/listings/:id/edit" element={<PGFormPage />} />
             <Route path="owner/listings/:id/rooms" element={<PGRoomsPage />} />
             <Route path="owner/bookings" element={<OwnerBookingsPage />} />
+            <Route path="owner/payments" element={<OwnerPaymentsPage />} />
           </Route>
 
           {/* Protected Admin Routes */}
           <Route element={<RoleRoute allowedRoles={['admin']} />}>
             <Route path="dashboard/admin" element={<AdminDashboard />} />
+            <Route path="admin/payments" element={<AdminPaymentsPage />} />
           </Route>
         </Route>
 

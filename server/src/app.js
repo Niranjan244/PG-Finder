@@ -8,6 +8,7 @@ import { env } from './config/env.js';
 import { apiRateLimiter } from './middleware/rateLimiter.js';
 import { notFoundHandler } from './middleware/notFoundHandler.js';
 import { errorHandler } from './middleware/errorHandler.js';
+import { webhookHandler } from './controllers/paymentController.js';
 import apiRoutes from './routes/index.js';
 
 import path from 'path';
@@ -34,11 +35,18 @@ app.use(
     origin: env.clientUrl,
     credentials: true,
     methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
-    allowedHeaders: ['Content-Type', 'Authorization'],
+    allowedHeaders: ['Content-Type', 'Authorization', 'X-Razorpay-Signature'],
   })
 );
 
-// Request body and cookie parsing
+// Razorpay Webhook requires raw unparsed body for HMAC SHA256 signature verification
+app.post(
+  '/api/payments/webhook',
+  express.raw({ type: 'application/json' }),
+  webhookHandler
+);
+
+// Standard JSON and URL-encoded request body parsing
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 app.use(cookieParser());

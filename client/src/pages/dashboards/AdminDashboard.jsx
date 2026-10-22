@@ -29,6 +29,7 @@ import {
   Search,
   UserX,
   UserCheck,
+  CreditCard,
   X,
 } from 'lucide-react';
 
@@ -245,6 +246,13 @@ export const AdminDashboard = () => {
             <Users className="h-3.5 w-3.5 text-indigo-600" />
             <span>User Management</span>
           </button>
+          <Link
+            to="/admin/payments"
+            className="flex items-center gap-1.5 rounded-lg px-3.5 py-2 text-slate-600 hover:text-slate-900 transition-all hover:bg-white/60"
+          >
+            <CreditCard className="h-3.5 w-3.5 text-emerald-600" />
+            <span>Revenue & Payments</span>
+          </Link>
         </div>
       </div>
 

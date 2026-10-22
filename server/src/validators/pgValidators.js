@@ -40,6 +40,11 @@ export const createPGSchema = z.object({
     .coerce
     .number()
     .min(0, { message: 'Security deposit cannot be negative' }),
+  bookingTokenAmount: z
+    .coerce
+    .number()
+    .min(0, { message: 'Booking token amount cannot be negative' })
+    .default(1000),
   foodDetails: z
     .object({
       available: z.boolean().default(false),

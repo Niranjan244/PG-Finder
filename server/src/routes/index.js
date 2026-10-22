@@ -10,6 +10,7 @@ import chatRoutes from './chatRoutes.js';
 import wishlistRoutes from './wishlistRoutes.js';
 import reviewRoutes from './reviewRoutes.js';
 import notificationRoutes from './notificationRoutes.js';
+import paymentRoutes from './paymentRoutes.js';
 
 const router = Router();
 
@@ -24,5 +25,6 @@ router.use('/chat', chatRoutes);
 router.use('/wishlist', wishlistRoutes);
 router.use('/reviews', reviewRoutes);
 router.use('/notifications', notificationRoutes);
+router.use('/payments', paymentRoutes);
 
 export default router;

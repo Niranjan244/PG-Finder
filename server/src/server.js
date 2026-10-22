@@ -4,6 +4,7 @@ import { env } from './config/env.js';
 import { connectDatabase } from './config/db.js';
 import { initializeSocketIO } from './sockets/index.js';
 import { initializeAdminAccount } from './services/adminSeedService.js';
+import { initCronJobs } from './services/cronService.js';
 
 const httpServer = http.createServer(app);
 
@@ -13,6 +14,7 @@ initializeSocketIO(httpServer);
 const startServer = async () => {
   await connectDatabase();
   await initializeAdminAccount();
+  initCronJobs();
 
   const server = httpServer.listen(env.port, () => {
     console.log(`PG Finder server running in ${env.nodeEnv} mode on port ${env.port}`);

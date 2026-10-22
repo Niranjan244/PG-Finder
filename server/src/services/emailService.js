@@ -238,3 +238,131 @@ export const sendBookingRejectionEmail = async ({
   }
 };
 
+export const sendPaymentSuccessEmail = async ({
+  toEmail,
+  userName,
+  pgTitle,
+  amount,
+  paymentId,
+  orderId,
+}) => {
+  const mailTransporter = getMailTransporter();
+  const htmlContent = `
+    <!DOCTYPE html>
+    <html lang="en">
+    <head>
+      <meta charset="utf-8">
+      <style>
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background-color: #f8fafc; margin: 0; padding: 32px 16px; color: #1e293b; }
+        .container { max-width: 540px; margin: 0 auto; background: #ffffff; border-radius: 16px; border: 1px solid #e2e8f0; overflow: hidden; }
+        .header { background: #0284c7; padding: 24px 32px; color: #ffffff; }
+        .content { padding: 32px; }
+        .details-box { background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 12px; padding: 16px; margin: 20px 0; font-size: 13px; }
+        .footer { background: #f8fafc; padding: 16px 32px; text-align: center; font-size: 11px; color: #94a3b8; border-top: 1px solid #f1f5f9; }
+      </style>
+    </head>
+    <body>
+      <div class="container">
+        <div class="header">
+          <div style="font-size: 20px; font-weight: 800;">PG Finder</div>
+          <div style="font-size: 12px; opacity: 0.9; margin-top: 4px;">Payment Received • Bed Confirmed</div>
+        </div>
+        <div class="content">
+          <div style="font-size: 16px; font-weight: 700; color: #0f172a; margin-bottom: 12px;">Hello ${userName || 'Resident'},</div>
+          <p style="font-size: 14px; color: #475569; line-height: 1.6;">
+            We have successfully received your booking token payment of <strong>₹${Number(amount).toLocaleString('en-IN')}</strong> for <strong>${pgTitle}</strong>.
+          </p>
+          <div class="details-box">
+            <div style="margin-bottom: 8px;"><strong>Accommodation:</strong> ${pgTitle}</div>
+            <div style="margin-bottom: 8px;"><strong>Amount Paid:</strong> ₹${Number(amount).toLocaleString('en-IN')}</div>
+            <div style="margin-bottom: 8px;"><strong>Payment ID:</strong> ${paymentId}</div>
+            <div><strong>Order ID:</strong> ${orderId}</div>
+          </div>
+          <p style="font-size: 13px; color: #64748b; line-height: 1.5;">
+            Your bed reservation is now officially confirmed. You can view your receipt and message the property owner in your dashboard.
+          </p>
+        </div>
+        <div class="footer">&copy; ${new Date().getFullYear()} PG Finder. All rights reserved.</div>
+      </div>
+    </body>
+    </html>
+  `;
+
+  try {
+    const info = await mailTransporter.sendMail({
+      from: `"PG Finder Payments" <${env.smtpUser}>`,
+      to: toEmail,
+      subject: `Payment Successful: Booking Token for ${pgTitle}`,
+      text: `Hello ${userName},\n\nYour payment of ₹${amount} for "${pgTitle}" was successful.\nPayment ID: ${paymentId}\nOrder ID: ${orderId}\n\nYour bed reservation is now officially confirmed!`,
+      html: htmlContent,
+    });
+    return { success: true, messageId: info.messageId };
+  } catch (error) {
+    console.warn(`Payment success email error to ${toEmail}: ${error.message}`);
+    return { success: false, error: error.message };
+  }
+};
+
+export const sendPaymentRefundEmail = async ({
+  toEmail,
+  userName,
+  pgTitle,
+  amount,
+  refundId,
+}) => {
+  const mailTransporter = getMailTransporter();
+  const htmlContent = `
+    <!DOCTYPE html>
+    <html lang="en">
+    <head>
+      <meta charset="utf-8">
+      <style>
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background-color: #f8fafc; margin: 0; padding: 32px 16px; color: #1e293b; }
+        .container { max-width: 540px; margin: 0 auto; background: #ffffff; border-radius: 16px; border: 1px solid #e2e8f0; overflow: hidden; }
+        .header { background: #475569; padding: 24px 32px; color: #ffffff; }
+        .content { padding: 32px; }
+        .details-box { background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px; padding: 16px; margin: 20px 0; font-size: 13px; }
+        .footer { background: #f8fafc; padding: 16px 32px; text-align: center; font-size: 11px; color: #94a3b8; border-top: 1px solid #f1f5f9; }
+      </style>
+    </head>
+    <body>
+      <div class="container">
+        <div class="header">
+          <div style="font-size: 20px; font-weight: 800;">PG Finder</div>
+          <div style="font-size: 12px; opacity: 0.9; margin-top: 4px;">Refund Processed</div>
+        </div>
+        <div class="content">
+          <div style="font-size: 16px; font-weight: 700; color: #0f172a; margin-bottom: 12px;">Hello ${userName || 'Resident'},</div>
+          <p style="font-size: 14px; color: #475569; line-height: 1.6;">
+            A refund of <strong>₹${Number(amount).toLocaleString('en-IN')}</strong> has been processed for your booking at <strong>${pgTitle}</strong>.
+          </p>
+          <div class="details-box">
+            <div style="margin-bottom: 8px;"><strong>Accommodation:</strong> ${pgTitle}</div>
+            <div style="margin-bottom: 8px;"><strong>Refund Amount:</strong> ₹${Number(amount).toLocaleString('en-IN')}</div>
+            <div><strong>Refund ID:</strong> ${refundId}</div>
+          </div>
+          <p style="font-size: 13px; color: #64748b; line-height: 1.5;">
+            The refund will credit to your original payment method within 5-7 business days per banking settlement norms.
+          </p>
+        </div>
+        <div class="footer">&copy; ${new Date().getFullYear()} PG Finder. All rights reserved.</div>
+      </div>
+    </body>
+    </html>
+  `;
+
+  try {
+    const info = await mailTransporter.sendMail({
+      from: `"PG Finder Payments" <${env.smtpUser}>`,
+      to: toEmail,
+      subject: `Refund Processed: Booking Token for ${pgTitle}`,
+      text: `Hello ${userName},\n\nYour refund of ₹${amount} for "${pgTitle}" has been processed.\nRefund ID: ${refundId}\n\nFunds will credit within 5-7 business days.`,
+      html: htmlContent,
+    });
+    return { success: true, messageId: info.messageId };
+  } catch (error) {
+    console.warn(`Payment refund email error to ${toEmail}: ${error.message}`);
+    return { success: false, error: error.message };
+  }
+};
+

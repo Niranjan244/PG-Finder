@@ -13,6 +13,7 @@ import {
   MessageSquare,
   Bell,
   Heart,
+  CreditCard,
 } from 'lucide-react';
 import {
   fetchNotificationsApi,
@@ -210,18 +211,38 @@ export const Header = () => {
                     <Inbox className="h-3.5 w-3.5 text-indigo-500" />
                     <span className="hidden md:inline">Requests</span>
                   </Link>
+
+                  <Link
+                    to="/owner/payments"
+                    className="inline-flex items-center gap-1.5 rounded-lg border border-theme-border bg-theme-surface px-2.5 py-1.5 text-xs font-semibold text-theme-secondary hover:bg-theme-surface-hover hover:text-theme-primary transition-colors shadow-xs"
+                    title="Received Payments"
+                  >
+                    <CreditCard className="h-3.5 w-3.5 text-indigo-500" />
+                    <span className="hidden md:inline">Tokens</span>
+                  </Link>
                 </>
               )}
 
               {user.role === 'tenant' && (
-                <Link
-                  to="/tenant/bookings"
-                  className="inline-flex items-center gap-1.5 rounded-lg border border-theme-border bg-theme-surface px-2.5 py-1.5 text-xs font-semibold text-theme-secondary hover:bg-theme-surface-hover hover:text-theme-primary transition-colors shadow-xs"
-                  title="My Bookings"
-                >
-                  <Calendar className="h-3.5 w-3.5 text-theme-brand" />
-                  <span className="hidden md:inline">My Bookings</span>
-                </Link>
+                <>
+                  <Link
+                    to="/tenant/bookings"
+                    className="inline-flex items-center gap-1.5 rounded-lg border border-theme-border bg-theme-surface px-2.5 py-1.5 text-xs font-semibold text-theme-secondary hover:bg-theme-surface-hover hover:text-theme-primary transition-colors shadow-xs"
+                    title="My Bookings"
+                  >
+                    <Calendar className="h-3.5 w-3.5 text-theme-brand" />
+                    <span className="hidden md:inline">My Bookings</span>
+                  </Link>
+
+                  <Link
+                    to="/tenant/payments"
+                    className="inline-flex items-center gap-1.5 rounded-lg border border-theme-border bg-theme-surface px-2.5 py-1.5 text-xs font-semibold text-theme-secondary hover:bg-theme-surface-hover hover:text-theme-primary transition-colors shadow-xs"
+                    title="Payment History"
+                  >
+                    <CreditCard className="h-3.5 w-3.5 text-theme-brand" />
+                    <span className="hidden md:inline">Payments</span>
+                  </Link>
+                </>
               )}
 
               <Link

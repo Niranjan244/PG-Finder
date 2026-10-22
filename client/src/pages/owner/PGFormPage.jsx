@@ -54,6 +54,7 @@ const pgFormSchema = z.object({
   description: z.string().trim().min(20, 'Description must be at least 20 characters').max(2000),
   genderPreference: z.enum(['boys', 'girls', 'coliving']),
   deposit: z.coerce.number().min(0, 'Deposit cannot be negative'),
+  bookingTokenAmount: z.coerce.number().min(0, 'Booking token cannot be negative').default(1000),
   city: z.string().trim().min(2, 'City is required'),
   area: z.string().trim().min(2, 'Area is required'),
   address: z.string().trim().min(5, 'Street address is required'),
@@ -96,6 +97,7 @@ export const PGFormPage = () => {
       description: '',
       genderPreference: 'coliving',
       deposit: 5000,
+      bookingTokenAmount: 1000,
       city: '',
       area: '',
       address: '',
@@ -161,6 +163,7 @@ export const PGFormPage = () => {
           setValue('description', pg.description);
           setValue('genderPreference', pg.genderPreference);
           setValue('deposit', pg.deposit);
+          setValue('bookingTokenAmount', pg.bookingTokenAmount ?? 1000);
           setValue('city', pg.city);
           setValue('area', pg.area);
           setValue('address', pg.address);
@@ -286,7 +289,7 @@ export const PGFormPage = () => {
       setServerError(`Validation error: ${errorMsg}`);
 
       // Auto-jump to the step containing the invalid field
-      if (['title', 'description', 'genderPreference', 'deposit'].includes(firstKey)) {
+      if (['title', 'description', 'genderPreference', 'deposit', 'bookingTokenAmount'].includes(firstKey)) {
         setActiveStep(1);
       } else if (['city', 'area', 'address', 'latitude', 'longitude'].includes(firstKey)) {
         setActiveStep(2);
@@ -310,6 +313,7 @@ export const PGFormPage = () => {
       description: formData.description.trim(),
       genderPreference: formData.genderPreference,
       deposit: Number(formData.deposit) || 0,
+      bookingTokenAmount: Number(formData.bookingTokenAmount) || 1000,
       city: formData.city.trim(),
       area: formData.area.trim(),
       address: formData.address.trim(),
@@ -471,6 +475,20 @@ export const PGFormPage = () => {
                   placeholder="5000"
                 />
                 {errors.deposit && <p className="mt-1 text-xs text-rose-600">{errors.deposit.message}</p>}
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold uppercase tracking-wider text-slate-700">
+                  Booking Token (₹)
+                </label>
+                <input
+                  type="number"
+                  {...register('bookingTokenAmount')}
+                  className="mt-1.5 block w-full rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-900 focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500"
+                  placeholder="1000"
+                />
+                {errors.bookingTokenAmount && <p className="mt-1 text-xs text-rose-600">{errors.bookingTokenAmount.message}</p>}
+                <p className="mt-1 text-[11px] text-slate-500">Paid online by tenant to lock their bed reservation</p>
               </div>
             </div>
 

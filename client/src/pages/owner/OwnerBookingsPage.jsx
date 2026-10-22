@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { Link } from 'react-router-dom';
 import {
   getOwnerBookingsApi,
   approveBookingApi,
@@ -15,6 +16,9 @@ import {
   X,
   AlertCircle,
   Loader2,
+  CreditCard,
+  ShieldCheck,
+  ArrowRight,
 } from 'lucide-react';
 
 export const OwnerBookingsPage = () => {
@@ -73,7 +77,8 @@ export const OwnerBookingsPage = () => {
   const statusTabs = [
     { id: 'all', label: 'All Requests' },
     { id: 'pending', label: 'Pending Review' },
-    { id: 'approved', label: 'Approved' },
+    { id: 'approved', label: 'Approved (Unpaid)' },
+    { id: 'confirmed', label: 'Confirmed & Paid' },
     { id: 'rejected', label: 'Rejected' },
     { id: 'cancelled', label: 'Cancelled' },
   ];
@@ -81,13 +86,24 @@ export const OwnerBookingsPage = () => {
   return (
     <div className="mx-auto max-w-6xl px-4 py-8 sm:px-6 lg:px-8 space-y-6">
       {/* Header */}
-      <div className="pb-4 border-b border-slate-200">
-        <h1 className="text-2xl font-bold tracking-tight text-slate-900">
-          Booking Requests Management
-        </h1>
-        <p className="mt-1 text-xs text-slate-500">
-          Review incoming tenant applications, verify move-in dates, and manage room allocations.
-        </p>
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 pb-4 border-b border-slate-200">
+        <div>
+          <h1 className="text-2xl font-bold tracking-tight text-slate-900">
+            Booking Requests Management
+          </h1>
+          <p className="mt-1 text-xs text-slate-500">
+            Review incoming tenant applications, verify move-in dates, and manage room allocations.
+          </p>
+        </div>
+
+        <Link
+          to="/owner/payments"
+          className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50 transition-colors w-fit"
+        >
+          <CreditCard className="h-3.5 w-3.5 text-brand-600" />
+          <span>Received Tokens</span>
+          <ArrowRight className="h-3.5 w-3.5" />
+        </Link>
       </div>
 
       {actionError && (
@@ -202,8 +218,25 @@ export const OwnerBookingsPage = () => {
                         </div>
                       </div>
 
-                      <BookingStatusBadge status={booking.status} />
+                      <BookingStatusBadge status={booking.status} paymentStatus={booking.paymentStatus} />
                     </div>
+
+                    {/* Paid Token Highlight */}
+                    {(booking.status === 'confirmed' || booking.paymentStatus === 'paid') && (
+                      <div className="rounded-xl border border-emerald-200 bg-emerald-50/70 p-3 flex items-center justify-between text-xs text-emerald-950">
+                        <div className="flex items-center gap-2">
+                          <ShieldCheck className="h-4 w-4 text-emerald-600 shrink-0" />
+                          <span className="font-bold">
+                            Booking Token Deposited &bull; ₹{booking.payment?.amount || booking.pg?.bookingTokenAmount || 1000} Received
+                          </span>
+                        </div>
+                        {booking.payment?.razorpayPaymentId && (
+                          <span className="text-[11px] font-mono text-emerald-800">
+                            Ref: {booking.payment.razorpayPaymentId}
+                          </span>
+                        )}
+                      </div>
+                    )}
 
                     {/* Accommodation info */}
                     <div className="rounded-xl bg-slate-50 border border-slate-100 p-3 grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs text-slate-600">

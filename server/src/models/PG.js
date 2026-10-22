@@ -77,6 +77,11 @@ const pgSchema = new mongoose.Schema(
       min: [0, 'Deposit cannot be negative'],
       default: 0,
     },
+    bookingTokenAmount: {
+      type: Number,
+      min: [0, 'Booking token amount cannot be negative'],
+      default: 1000,
+    },
     foodDetails: {
       available: {
         type: Boolean,

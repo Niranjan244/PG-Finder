@@ -1,6 +1,8 @@
 import Booking from '../models/Booking.js';
 import PG from '../models/PG.js';
 import Room from '../models/Room.js';
+import { env } from '../config/env.js';
+import { processRefund } from './paymentService.js';
 import { notificationHooks } from '../utils/notificationHooks.js';
 
 const populateBookingDetails = (bookingQuery) =>
@@ -94,16 +96,17 @@ export const createBookingRequest = async ({ tenantId, pgId, roomId, moveInDate,
 
 export const getTenantBookings = async (tenantId) => {
   return Booking.find({ tenant: tenantId })
-    .populate('pg', 'title address city area images genderPreference rentRange deposit')
+    .populate('pg', 'title address city area images genderPreference rentRange deposit bookingTokenAmount')
     .populate('room', 'roomNumber roomType rent deposit totalBeds occupiedBeds')
     .populate('owner', 'name phone email')
+    .populate('payment')
     .sort({ createdAt: -1 });
 };
 
 export const getOwnerBookings = async (ownerId, { status, pgId, page = 1, limit = 20 } = {}) => {
   const filter = { owner: ownerId };
 
-  if (status && ['pending', 'approved', 'rejected', 'cancelled'].includes(status)) {
+  if (status && ['pending', 'approved', 'confirmed', 'rejected', 'cancelled'].includes(status)) {
     filter.status = status;
   }
 
@@ -119,8 +122,9 @@ export const getOwnerBookings = async (ownerId, { status, pgId, page = 1, limit 
     Booking.countDocuments(filter),
     Booking.find(filter)
       .populate('tenant', 'name email phone')
-      .populate('pg', 'title address city area')
+      .populate('pg', 'title address city area bookingTokenAmount')
       .populate('room', 'roomNumber roomType rent totalBeds occupiedBeds')
+      .populate('payment')
       .sort({ createdAt: -1 })
       .skip(skip)
       .limit(pageSize),
@@ -173,8 +177,10 @@ export const approveBookingRequest = async ({ bookingId, ownerId }) => {
     throw error;
   }
 
-  // Update booking state
+  // Update booking state with hold expiry window
+  const holdHours = env.bookingHoldHours || 24;
   booking.status = 'approved';
+  booking.holdExpiresAt = new Date(Date.now() + holdHours * 60 * 60 * 1000);
   booking.statusHistory.push({
     status: 'approved',
     changedBy: ownerId,
@@ -270,12 +276,25 @@ export const cancelBookingRequest = async ({ bookingId, userId, userRole, reason
     throw error;
   }
 
-  // If cancelling an approved booking, free the reserved bed atomically
-  if (booking.status === 'approved') {
+  // If cancelling an approved or confirmed booking, free the reserved bed atomically
+  if (booking.status === 'approved' || booking.status === 'confirmed') {
     await Room.findOneAndUpdate(
       { _id: booking.room, occupiedBeds: { $gt: 0 } },
       { $inc: { occupiedBeds: -1 } }
     );
+  }
+
+  // If cancelling a paid booking, initiate automatic Razorpay refund
+  if (booking.paymentStatus === 'paid') {
+    try {
+      await processRefund({
+        bookingId: booking._id,
+        userId,
+        reason: reason?.trim() || `Booking cancelled by ${userRole || 'user'}`,
+      });
+    } catch (refundErr) {
+      console.warn(`[Refund on Cancel] Booking ${booking._id}:`, refundErr.message);
+    }
   }
 
   const cancelReason = reason?.trim() || `Booking cancelled by ${userRole || 'user'}`;
