@@ -1,13 +1,13 @@
 import express from 'express';
 import { authenticateUser, authorizeRoles } from '../middleware/auth.js';
 import { validateRequest, validateQuery } from '../middleware/validateRequest.js';
-import { paymentRateLimiter } from '../middleware/paymentRateLimiter.js';
+import { paymentRateLimiter } from '../middleware/rateLimiters.js';
 import {
   createOrderSchema,
   verifyPaymentSchema,
   refundPaymentSchema,
   paymentFilterSchema,
-} from '../validations/paymentValidation.js';
+} from '../validators/paymentValidation.js';
 import {
   createOrderHandler,
   verifyPaymentHandler,

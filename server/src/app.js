@@ -5,7 +5,7 @@ import morgan from 'morgan';
 import cookieParser from 'cookie-parser';
 import mongoSanitize from 'express-mongo-sanitize';
 import { env } from './config/env.js';
-import { apiRateLimiter } from './middleware/rateLimiter.js';
+import { apiRateLimiter } from './middleware/rateLimiters.js';
 import { notFoundHandler } from './middleware/notFoundHandler.js';
 import { errorHandler } from './middleware/errorHandler.js';
 import { webhookHandler } from './controllers/paymentController.js';

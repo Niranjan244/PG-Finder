@@ -16,7 +16,7 @@ import {
   resetPasswordSchema,
   firebaseAuthSchema,
 } from '../validators/authValidators.js';
-import { authRateLimiter } from '../middleware/authRateLimiter.js';
+import { authRateLimiter } from '../middleware/rateLimiters.js';
 import { authenticateUser } from '../middleware/auth.js';
 
 const router = Router();

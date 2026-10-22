@@ -13,7 +13,7 @@ import {
   createBookingSchema,
   rejectBookingSchema,
   cancelBookingSchema,
-} from '../validations/bookingValidation.js';
+} from '../validators/bookingValidation.js';
 
 const router = Router();
 
