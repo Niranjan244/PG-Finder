@@ -9,6 +9,7 @@ import {
   saveChatMessage,
 } from '../services/chatService.js';
 import { getIO } from '../sockets/index.js';
+import { isReceiverInConversationRoom } from '../sockets/chatSocket.js';
 import { sendSuccess } from '../utils/apiResponse.js';
 
 export const getChatToken = async (req, res, next) => {
@@ -72,8 +73,13 @@ export const sendMessageViaRest = async (req, res, next) => {
         };
         // 1. Broadcast to the conversation room
         io.to(`conversation_${conversationId}`).emit('new_message', payload);
-        // 2. Broadcast to recipient's personal user channel (for instant delivery anywhere)
-        io.to(`user_${receiverId.toString()}`).emit('new_message', payload);
+
+        // 2. Broadcast to recipient's personal user channel only when not already in conversation room
+        const isReceiverInRoom = isReceiverInConversationRoom(io, conversationId, receiverId);
+        if (!isReceiverInRoom) {
+          io.to(`user_${receiverId.toString()}`).emit('new_message', payload);
+        }
+
         io.to(`user_${receiverId.toString()}`).emit('conversation_updated', payload);
         // 3. Broadcast to sender's personal channel (keeps multiple tabs in sync)
         io.to(`user_${req.user._id.toString()}`).emit('conversation_updated', payload);

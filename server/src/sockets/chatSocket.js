@@ -4,6 +4,20 @@ import User from '../models/User.js';
 import Conversation from '../models/Conversation.js';
 import { saveChatMessage, markConversationAsRead } from '../services/chatService.js';
 
+export const isReceiverInConversationRoom = (io, conversationId, receiverId) => {
+  const conversationRoom = io.sockets?.adapter?.rooms?.get(`conversation_${conversationId}`);
+  const receiverRoom = io.sockets?.adapter?.rooms?.get(`user_${receiverId.toString()}`);
+
+  if (conversationRoom && receiverRoom) {
+    for (const socketId of receiverRoom) {
+      if (conversationRoom.has(socketId)) {
+        return true;
+      }
+    }
+  }
+  return false;
+};
+
 export const registerChatSocketHandlers = (io) => {
   // Socket.IO authentication middleware
   io.use(async (socket, next) => {
@@ -110,11 +124,15 @@ export const registerChatSocketHandlers = (io) => {
           conversation,
         };
 
-        // 1. Broadcast the new message to everyone inside the conversation room (both sender and receiver)
-        io.to(roomName).emit('new_message', payload);
+        // 1. Emit the new message once to the other participants in the conversation room
+        socket.to(roomName).emit('new_message', payload);
 
-        // 2. Also notify recipient's personal user room (for instant forwarding even if room not joined)
-        io.to(`user_${receiverId.toString()}`).emit('new_message', payload);
+        // 2. Send it to the user_<receiverId> room only when the receiver is not already in the conversation room
+        const isReceiverInRoom = isReceiverInConversationRoom(io, conversationId, receiverId);
+        if (!isReceiverInRoom) {
+          io.to(`user_${receiverId.toString()}`).emit('new_message', payload);
+        }
+
         io.to(`user_${receiverId.toString()}`).emit('conversation_updated', payload);
 
         if (callback) callback({ success: true, message });

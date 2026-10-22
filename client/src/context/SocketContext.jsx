@@ -53,7 +53,6 @@ export const SocketProvider = ({ children }) => {
 
   const originalTitleRef = useRef(typeof document !== 'undefined' ? document.title : 'PG Finder');
   const titleFlashIntervalRef = useRef(null);
-  const recentToastsRef = useRef(new Set());
 
   // Restore document title when window gains focus
   useEffect(() => {
@@ -92,12 +91,6 @@ export const SocketProvider = ({ children }) => {
 
   const showToast = useCallback(
     (toastData) => {
-      // Deduplicate rapid repeat toasts (e.g. from new_notification and new_message firing together)
-      const dedupKey = `${toastData.conversationId || ''}_${toastData.title || ''}_${toastData.message || ''}`;
-      if (recentToastsRef.current.has(dedupKey)) return;
-      recentToastsRef.current.add(dedupKey);
-      setTimeout(() => recentToastsRef.current.delete(dedupKey), 3500);
-
       const id = toastData.id || Date.now() + Math.random();
       const newToast = { ...toastData, id };
       setToasts((prev) => [newToast, ...prev.slice(0, 3)]);
