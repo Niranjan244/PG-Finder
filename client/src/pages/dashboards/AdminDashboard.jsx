@@ -10,6 +10,7 @@ import {
   fetchAdminUsersApi,
   toggleBlockUserApi,
 } from '../../services/adminClient.js';
+import { getAdminRevenueReportApi } from '../../services/paymentClient.js';
 import {
   Shield,
   Users,
@@ -54,6 +55,15 @@ export const AdminDashboard = () => {
     queryFn: fetchAdminStats,
     refetchInterval: 15000,
   });
+
+  // Platform revenue query
+  const { data: revenueData } = useQuery({
+    queryKey: ['adminRevenueReport'],
+    queryFn: () => getAdminRevenueReportApi(),
+    refetchInterval: 30000,
+  });
+
+  const totalRevenue = revenueData?.data?.summary?.totalAmount || 0;
 
   // Accommodation listings
   const { data: pgsData, isLoading: isPGsLoading } = useQuery({
@@ -272,7 +282,7 @@ export const AdminDashboard = () => {
       )}
 
       {/* Summary KPI Cards */}
-      <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
+      <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-5">
         <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-xs">
           <div className="flex items-center justify-between">
             <span className="text-xs font-semibold uppercase tracking-wider text-slate-500">Platform Users</span>
@@ -324,6 +334,22 @@ export const AdminDashboard = () => {
           </div>
           <p className="mt-1 text-[11px] text-slate-500">Platform reservation inquiries</p>
         </div>
+
+        <Link
+          to="/admin/payments"
+          className="rounded-xl border border-emerald-200 bg-emerald-50/50 p-5 shadow-xs hover:border-emerald-300 transition-colors group"
+        >
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-semibold uppercase tracking-wider text-emerald-800">Token Volume</span>
+            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-emerald-100 text-emerald-700 group-hover:bg-emerald-200 transition-colors">
+              <CreditCard className="h-4 w-4" />
+            </div>
+          </div>
+          <div className="mt-3 text-2xl font-bold text-emerald-900">
+            ₹{totalRevenue.toLocaleString('en-IN')}
+          </div>
+          <p className="mt-1 text-[11px] text-emerald-700">Razorpay transactions &rarr;</p>
+        </Link>
       </div>
 
       {/* TAB 1: LISTINGS MODERATION */}
