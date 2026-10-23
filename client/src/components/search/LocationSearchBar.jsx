@@ -9,26 +9,34 @@ import {
   RotateCw,
   Compass,
   CheckCircle2,
+  ArrowUpDown,
+  SlidersHorizontal,
 } from 'lucide-react';
 import { geocodeLocationApi, reverseGeocodeLocationApi } from '../../services/pgClient.js';
 import { useGeolocation } from '../../hooks/useGeolocation.js';
 
-const RADIUS_OPTIONS = [1, 2, 5, 10, 20, 50, 100];
+const RADIUS_OPTIONS = [1, 2, 5, 10, 20, 50];
 
 export const POPULAR_AREAS = [
-  { name: 'Rotary Nagar, Khammam', label: 'Rotary Nagar (Khammam)', lat: 17.2482, lng: 80.1745 },
-  { name: 'Khammam', label: 'Khammam Center', lat: 17.2465, lng: 80.1500 },
+  { name: 'Rotary Nagar, Khammam', label: 'Rotary Nagar', lat: 17.2482, lng: 80.1745 },
+  { name: 'Khammam', label: 'Khammam', lat: 17.2465, lng: 80.1500 },
   { name: 'Bengaluru', label: 'Bengaluru', lat: 12.9716, lng: 77.5946 },
   { name: 'Hyderabad', label: 'Hyderabad', lat: 17.3850, lng: 78.4867 },
 ];
 
 export const LocationSearchBar = ({
-  currentFilters,
+  currentFilters = {},
+  totalCount = 0,
+  isLoading = false,
+  sort = 'newest',
+  onSortChange,
+  onOpenMobileFilters,
+  onKeywordSearch,
   onLocationSelect,
   onRadiusChange,
   onClearLocation,
 }) => {
-  const [query, setQuery] = useState('');
+  const [query, setQuery] = useState(currentFilters.q || currentFilters.keyword || '');
   const [suggestions, setSuggestions] = useState([]);
   const [isSearchingSuggestions, setIsSearchingSuggestions] = useState(false);
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
@@ -50,6 +58,26 @@ export const LocationSearchBar = ({
   const activeRadius = currentFilters.radius ? parseInt(currentFilters.radius, 10) : 10;
   const activeLocationLabel = currentFilters.userPlace || (activeLat && activeLng ? 'Your Location' : null);
 
+  // Sync external filter changes (e.g. from reset filters or sidebar) with query state
+  useEffect(() => {
+    const currentQ = currentFilters.q || currentFilters.keyword || '';
+    setQuery(currentQ);
+  }, [currentFilters.q, currentFilters.keyword]);
+
+  // Debounce typing to automatically trigger keyword search on listings
+  useEffect(() => {
+    const currentQ = (currentFilters.q || currentFilters.keyword || '').trim();
+    if (query.trim() === currentQ) return;
+
+    const timer = setTimeout(() => {
+      if (onKeywordSearch) {
+        onKeywordSearch(query.trim());
+      }
+    }, 450);
+
+    return () => clearTimeout(timer);
+  }, [query, currentFilters.q, currentFilters.keyword, onKeywordSearch]);
+
   // Close dropdown on outside click
   useEffect(() => {
     const handleOutsideClick = (e) => {
@@ -61,7 +89,7 @@ export const LocationSearchBar = ({
     return () => document.removeEventListener('mousedown', handleOutsideClick);
   }, []);
 
-  // Debounced geocoding query
+  // Debounced geocoding query for area suggestions
   useEffect(() => {
     if (!query || query.trim().length < 2) {
       setSuggestions([]);
@@ -86,7 +114,16 @@ export const LocationSearchBar = ({
     return () => clearTimeout(handler);
   }, [query]);
 
-  // Handle "Use My Location" GPS click with reverse-geocoded place resolution
+  // Explicit form submit on Enter or Search button click
+  const handleSearchSubmit = (e) => {
+    if (e) e.preventDefault();
+    setIsDropdownOpen(false);
+    if (onKeywordSearch) {
+      onKeywordSearch(query.trim());
+    }
+  };
+
+  // Handle "Use My Location" GPS click
   const handleUseMyLocation = async () => {
     try {
       const coords = await getCurrentLocation();
@@ -111,7 +148,6 @@ export const LocationSearchBar = ({
         setIsResolvingAddress(false);
       }
 
-      // Persist verified exact location
       if (typeof window !== 'undefined') {
         localStorage.setItem(
           'preferred_exact_location',
@@ -126,7 +162,7 @@ export const LocationSearchBar = ({
         radius: activeRadius,
       });
     } catch (err) {
-      // Error is caught by hook and displayed in geoError banner
+      // Error handled by hook
     }
   };
 
@@ -142,6 +178,10 @@ export const LocationSearchBar = ({
         'preferred_exact_location',
         JSON.stringify({ lat: place.lat, lng: place.lng, userPlace: placeName })
       );
+    }
+
+    if (onKeywordSearch) {
+      onKeywordSearch('');
     }
 
     onLocationSelect({
@@ -168,6 +208,10 @@ export const LocationSearchBar = ({
       );
     }
 
+    if (onKeywordSearch) {
+      onKeywordSearch('');
+    }
+
     onLocationSelect({
       lat: area.lat,
       lng: area.lng,
@@ -176,25 +220,34 @@ export const LocationSearchBar = ({
     });
   };
 
-  // Clear active location
+  // Clear active location and keyword search
   const handleClear = () => {
     setQuery('');
     setSuggestions([]);
     setDetectedAccuracyInfo(null);
     clearGeoHook();
+    if (onKeywordSearch) {
+      onKeywordSearch('');
+    }
     onClearLocation();
   };
 
   const isLocatingUser = isLocating || isResolvingAddress;
 
   return (
-    <div className="w-full space-y-3">
-      {/* Search Bar Row */}
-      <div className="flex flex-col sm:flex-row items-stretch gap-2.5">
-        {/* Autocomplete Input */}
-        <div className="relative flex-1" ref={dropdownRef}>
-          <div className="relative">
-            <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-theme-muted" />
+    <div className="w-full rounded-2xl border border-theme-border bg-theme-surface/95 backdrop-blur-md p-3 sm:p-3.5 shadow-xs space-y-2.5 transition-colors">
+      {/* Top Row: Search Form + Controls */}
+      <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
+        {/* Search Input Form */}
+        <form onSubmit={handleSearchSubmit} className="relative flex-1" ref={dropdownRef}>
+          <div className="relative flex items-center">
+            <button
+              type="submit"
+              className="absolute left-3.5 top-1/2 -translate-y-1/2 text-theme-muted hover:text-theme-brand transition-colors p-0.5"
+              title="Click or press Enter to search"
+            >
+              <Search className="h-4 w-4" />
+            </button>
             <input
               type="text"
               value={query}
@@ -204,29 +257,44 @@ export const LocationSearchBar = ({
               }}
               placeholder={
                 activeLocationLabel
-                  ? `Near: ${activeLocationLabel} (Search another area...)`
-                  : 'Search landmark, college, or area (e.g. Rotary Nagar, Khammam, Koramangala)...'
+                  ? `Search PG name or landmark in ${activeLocationLabel}...`
+                  : 'Search for PG...'
               }
-              className="w-full rounded-xl border border-theme-border bg-theme-surface py-2.5 pl-10 pr-10 text-xs text-theme-primary placeholder-theme-muted shadow-xs focus:border-theme-brand focus:outline-none focus:ring-1 focus:ring-theme-brand transition-colors"
+              className="w-full rounded-xl border border-theme-border bg-theme-surface py-2 pl-9 pr-24 text-xs text-theme-primary placeholder-theme-muted shadow-xs focus:border-theme-brand focus:outline-none focus:ring-1 focus:ring-theme-brand transition-colors"
             />
-            {query && (
+            <div className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center gap-1">
+              {query && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setQuery('');
+                    if (onKeywordSearch) onKeywordSearch('');
+                  }}
+                  className="text-theme-muted hover:text-theme-primary p-1 rounded-md hover:bg-theme-surface-hover transition-colors"
+                  title="Clear search"
+                >
+                  <X className="h-3.5 w-3.5" />
+                </button>
+              )}
+              {isSearchingSuggestions && (
+                <Loader2 className="h-3.5 w-3.5 animate-spin text-theme-brand mr-0.5" />
+              )}
               <button
-                type="button"
-                onClick={() => setQuery('')}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-theme-muted hover:text-theme-primary"
+                type="submit"
+                className="inline-flex items-center gap-1 rounded-lg bg-theme-brand px-2.5 py-1 text-[11px] font-semibold text-white shadow-xs hover:bg-theme-brand-hover transition-colors cursor-pointer"
               >
-                <X className="h-3.5 w-3.5" />
+                <span>Search</span>
               </button>
-            )}
-            {isSearchingSuggestions && (
-              <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 animate-spin text-theme-brand" />
-            )}
+            </div>
           </div>
 
           {/* Autocomplete Suggestions Dropdown */}
           {isDropdownOpen && suggestions.length > 0 && (
             <div className="absolute left-0 right-0 top-full mt-1.5 rounded-xl border border-theme-border bg-theme-surface shadow-xl z-50 overflow-hidden">
               <div className="p-1.5 divide-y divide-theme-border/60">
+                <div className="px-2.5 py-1 text-[10px] font-semibold uppercase text-theme-muted">
+                  Suggested Locations
+                </div>
                 {suggestions.map((item, idx) => (
                   <button
                     key={item.placeId || idx}
@@ -246,35 +314,94 @@ export const LocationSearchBar = ({
               </div>
             </div>
           )}
-        </div>
+        </form>
 
-        {/* "Use My Location" Button with High Accuracy Detection */}
-        <button
-          type="button"
-          onClick={handleUseMyLocation}
-          disabled={isLocatingUser}
-          className="inline-flex items-center justify-center gap-2 rounded-xl border border-theme-border bg-theme-surface px-4 py-2.5 text-xs font-semibold text-theme-primary shadow-xs hover:bg-theme-surface-hover hover:border-theme-brand/60 focus:outline-none focus:ring-2 focus:ring-theme-brand transition-all disabled:opacity-60 shrink-0"
-          title="Detect my exact current location"
-        >
-          {isLocatingUser ? (
-            <Loader2 className="h-4 w-4 animate-spin text-theme-brand" />
-          ) : (
-            <Navigation className="h-4 w-4 text-theme-brand" />
+        {/* Right Controls: Near Me, Mobile Filters, Sort Dropdown */}
+        <div className="flex items-center gap-2 shrink-0">
+          {/* "Near Me" GPS Button */}
+          <button
+            type="button"
+            onClick={handleUseMyLocation}
+            disabled={isLocatingUser}
+            className="inline-flex items-center gap-1.5 rounded-xl border border-theme-border bg-theme-surface px-3 py-2 text-xs font-semibold text-theme-primary shadow-xs hover:bg-theme-surface-hover hover:border-theme-brand/60 focus:outline-none transition-all disabled:opacity-60 cursor-pointer"
+            title="Detect my current location"
+          >
+            {isLocatingUser ? (
+              <Loader2 className="h-3.5 w-3.5 animate-spin text-theme-brand" />
+            ) : (
+              <Navigation className="h-3.5 w-3.5 text-theme-brand" />
+            )}
+            <span className="hidden md:inline">
+              {isLocating ? 'Locating...' : 'Near me'}
+            </span>
+          </button>
+
+          {/* Mobile Filter Trigger */}
+          {onOpenMobileFilters && (
+            <button
+              type="button"
+              onClick={onOpenMobileFilters}
+              className="inline-flex lg:hidden items-center gap-1.5 rounded-xl border border-theme-border bg-theme-surface px-3 py-2 text-xs font-semibold text-theme-secondary hover:bg-theme-surface-hover hover:text-theme-primary shadow-xs transition-colors"
+            >
+              <SlidersHorizontal className="h-3.5 w-3.5 text-theme-brand" />
+              <span>Filters</span>
+            </button>
           )}
-          <span>
-            {isLocating
-              ? 'Locating...'
-              : isResolvingAddress
-              ? 'Finding exact area...'
-              : 'Use my location'}
-          </span>
-        </button>
+
+          {/* Sort Selector */}
+          {onSortChange && (
+            <div className="relative">
+              <select
+                value={sort}
+                onChange={onSortChange}
+                className="appearance-none rounded-xl border border-theme-border bg-theme-surface py-2 pl-7 pr-7 text-xs font-semibold text-theme-primary shadow-xs focus:border-theme-brand focus:outline-none transition-colors cursor-pointer hover:border-theme-border/80"
+              >
+                {activeLat && activeLng && (
+                  <option value="nearest" className="bg-theme-surface text-theme-primary">
+                    Nearest First
+                  </option>
+                )}
+                <option value="newest" className="bg-theme-surface text-theme-primary">
+                  Newest Listed
+                </option>
+                <option value="rent_asc" className="bg-theme-surface text-theme-primary">
+                  Rent: Low to High
+                </option>
+                <option value="rent_desc" className="bg-theme-surface text-theme-primary">
+                  Rent: High to Low
+                </option>
+                <option value="rating_desc" className="bg-theme-surface text-theme-primary">
+                  Top Rated
+                </option>
+              </select>
+              <ArrowUpDown className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3 w-3 text-theme-muted pointer-events-none" />
+            </div>
+          )}
+        </div>
       </div>
 
-      {/* Quick Locality / City Shortcuts */}
-      <div className="flex flex-wrap items-center gap-2 pt-0.5 text-xs text-theme-muted">
-        <span className="text-[11px] font-medium text-theme-secondary">Quick areas:</span>
+      {/* Bottom Sub-Row: Results Count on Left + Quick Area Shortcuts on Right */}
+      <div className="flex flex-wrap items-center justify-between gap-2 pt-2 border-t border-theme-border/60 text-xs">
+        {/* Live Results Count with pulsing indicator */}
+        <div className="flex items-center gap-2 text-theme-secondary">
+          <span className="flex h-2 w-2 rounded-full bg-emerald-500 animate-pulse shrink-0" />
+          <span className="font-bold text-theme-primary">{totalCount}</span>
+          <span>{totalCount === 1 ? 'accommodation found' : 'accommodations found'}</span>
+          {currentFilters.q && (
+            <span className="text-theme-muted">
+              matching &ldquo;<span className="font-semibold text-theme-brand">{currentFilters.q}</span>&rdquo;
+            </span>
+          )}
+          {activeLocationLabel && (
+            <span className="text-theme-muted hidden sm:inline">
+              &bull; near <span className="font-semibold text-theme-primary">{activeLocationLabel}</span>
+            </span>
+          )}
+        </div>
+
+        {/* Quick Area Shortcuts */}
         <div className="flex flex-wrap items-center gap-1.5">
+          <span className="text-[11px] font-medium text-theme-muted hidden md:inline">Quick:</span>
           {POPULAR_AREAS.map((area) => {
             const isSelected = activeLocationLabel?.toLowerCase().includes(area.name.toLowerCase());
             return (
@@ -282,13 +409,13 @@ export const LocationSearchBar = ({
                 key={area.name}
                 type="button"
                 onClick={() => handleSelectArea(area)}
-                className={`inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-[11px] font-semibold border transition-all ${
+                className={`inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-[11px] font-medium border transition-all ${
                   isSelected
                     ? 'bg-theme-brand text-white border-theme-brand shadow-xs'
                     : 'bg-theme-surface text-theme-secondary border-theme-border hover:bg-theme-surface-hover hover:text-theme-primary'
                 }`}
               >
-                <MapPin className="h-3 w-3" />
+                <MapPin className="h-2.5 w-2.5" />
                 <span>{area.label}</span>
               </button>
             );
@@ -296,29 +423,54 @@ export const LocationSearchBar = ({
         </div>
       </div>
 
-      {/* High-Accuracy GPS Fix Confirmation */}
-      {detectedAccuracyInfo?.isExact && activeLat && activeLng && (
-        <div className="flex items-center justify-between gap-3 rounded-xl border border-emerald-500/30 bg-emerald-500/10 px-3 py-2 text-xs text-emerald-800 dark:text-emerald-200">
+      {/* Active Near-Me Location Status & Radius Selector */}
+      {activeLat && activeLng && (
+        <div className="flex flex-wrap items-center justify-between gap-2 rounded-xl bg-theme-surface-subtle border border-theme-border/60 p-2 text-xs">
           <div className="flex items-center gap-2">
-            <CheckCircle2 className="h-4 w-4 shrink-0 text-emerald-600 dark:text-emerald-400" />
-            <span className="font-semibold">
-              Exact location active: {activeLocationLabel}
+            <Compass className="h-4 w-4 text-theme-brand shrink-0" />
+            <span className="font-semibold text-theme-primary">
+              Searching within {activeRadius} km of {activeLocationLabel}
             </span>
+            <button
+              type="button"
+              onClick={handleClear}
+              className="text-theme-muted hover:text-rose-500 p-0.5 rounded transition-colors"
+              title="Clear location filter"
+            >
+              <X className="h-3 w-3" />
+            </button>
           </div>
-          <span className="text-[10px] opacity-75 hidden sm:inline">Tip: You can also click on the map to pin a specific street</span>
+
+          <div className="flex items-center gap-1">
+            <span className="text-[11px] text-theme-muted mr-1 hidden sm:inline">Radius:</span>
+            {RADIUS_OPTIONS.map((r) => (
+              <button
+                key={r}
+                type="button"
+                onClick={() => onRadiusChange(r)}
+                className={`rounded-lg px-2 py-0.5 text-[11px] font-semibold transition-all ${
+                  activeRadius === r
+                    ? 'bg-theme-brand text-white shadow-xs'
+                    : 'text-theme-secondary hover:text-theme-primary bg-theme-surface border border-theme-border'
+                }`}
+              >
+                {r} km
+              </button>
+            ))}
+          </div>
         </div>
       )}
 
       {/* Geolocation Permission or Network Error Banner */}
       {geoError && (
-        <div className="flex items-start justify-between gap-3 rounded-xl border border-amber-500/30 bg-amber-500/10 p-3 text-xs text-amber-800 dark:text-amber-200">
+        <div className="flex items-start justify-between gap-3 rounded-xl border border-amber-500/30 bg-amber-500/10 p-2.5 text-xs text-amber-800 dark:text-amber-200">
           <div className="flex items-start gap-2">
             <AlertCircle className="h-4 w-4 shrink-0 text-amber-600 dark:text-amber-400 mt-0.5" />
             <div>
               <span className="font-semibold">{geoError}</span>
               {errorCode === 'PERMISSION_DENIED' && (
                 <p className="mt-0.5 text-[11px] opacity-90">
-                  Tip: Look for the location pin or lock icon in your browser address bar to allow location access, or select an area pill above.
+                  Tip: Look for the location lock icon in your browser address bar to allow location access, or click a quick area shortcut above.
                 </p>
               )}
             </div>
@@ -333,56 +485,6 @@ export const LocationSearchBar = ({
               <span>Retry</span>
             </button>
           )}
-        </div>
-      )}
-
-      {/* Active Near-Me Location Status & Radius Selector */}
-      {activeLat && activeLng && (
-        <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-theme-border bg-theme-surface-subtle p-3 transition-colors">
-          <div className="flex items-center gap-2">
-            <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-theme-brand-subtle text-theme-brand">
-              <Compass className="h-4 w-4" />
-            </div>
-            <div>
-              <div className="flex items-center gap-2">
-                <span className="text-xs font-bold text-theme-primary">
-                  Searching near {activeLocationLabel || 'Selected Location'}
-                </span>
-                <button
-                  type="button"
-                  onClick={handleClear}
-                  className="rounded p-0.5 text-theme-muted hover:text-rose-500 hover:bg-theme-surface-hover transition-colors"
-                  title="Clear location filter"
-                >
-                  <X className="h-3.5 w-3.5" />
-                </button>
-              </div>
-              <div className="text-[11px] text-theme-muted">
-                Showing verified PGs within {activeRadius} km &bull; Sorted nearest first
-              </div>
-            </div>
-          </div>
-
-          {/* Radius Selector Pills */}
-          <div className="flex items-center gap-1.5">
-            <span className="text-[11px] font-semibold text-theme-secondary mr-1">Radius:</span>
-            <div className="flex items-center rounded-lg border border-theme-border bg-theme-surface p-1">
-              {RADIUS_OPTIONS.map((r) => (
-                <button
-                  key={r}
-                  type="button"
-                  onClick={() => onRadiusChange(r)}
-                  className={`rounded px-2.5 py-1 text-xs font-semibold transition-all ${
-                    activeRadius === r
-                      ? 'bg-theme-brand text-white shadow-xs'
-                      : 'text-theme-secondary hover:text-theme-primary'
-                  }`}
-                >
-                  {r} km
-                </button>
-              ))}
-            </div>
-          </div>
         </div>
       )}
     </div>

@@ -11,6 +11,7 @@ import {
 } from '../../services/reviewClient.js';
 import { useAuth } from '../../context/AuthContext.jsx';
 import { BookingModal } from '../../components/booking/BookingModal.jsx';
+import { PGDetailMap } from '../../components/search/PGDetailMap.jsx';
 import {
   Building2,
   MapPin,
@@ -32,6 +33,7 @@ import {
   Star,
   CheckCircle2,
   Navigation,
+  Map as MapIcon,
 } from 'lucide-react';
 
 export const PGDetailsPage = () => {
@@ -46,6 +48,7 @@ export const PGDetailsPage = () => {
   const [selectedBookingRoom, setSelectedBookingRoom] = useState(null);
   const [isStartingChat, setIsStartingChat] = useState(false);
   const [isTogglingWishlist, setIsTogglingWishlist] = useState(false);
+  const [isMapModalOpen, setIsMapModalOpen] = useState(false);
 
   const [searchParams] = useSearchParams();
   const searchLat = parseFloat(searchParams.get('lat'));
@@ -286,7 +289,7 @@ export const PGDetailsPage = () => {
   };
 
   return (
-    <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
+    <div className="mx-auto max-w-[1760px] w-full px-4 py-8 sm:px-6 lg:px-8 xl:px-10">
       {/* Verification / Preview Banner */}
       {isPreview && (
         <div className="mb-6 rounded-xl border border-amber-500/30 bg-amber-500/10 p-4 text-xs text-amber-600 dark:text-amber-400 flex items-start gap-3">
@@ -328,11 +331,22 @@ export const PGDetailsPage = () => {
               )}
             </div>
           </div>
-          <div className="mt-1 flex flex-wrap items-center gap-2 text-xs text-theme-secondary">
-            <div className="flex items-center gap-1.5">
-              <MapPin className="h-3.5 w-3.5 text-theme-muted shrink-0" />
+          <div className="mt-2 flex flex-wrap items-center gap-2 text-xs text-theme-secondary">
+            <div className="flex items-center gap-1.5 font-medium text-theme-primary">
+              <MapPin className="h-4 w-4 text-theme-brand shrink-0" />
               <span>{pg.address}, {pg.area}, {pg.city}</span>
             </div>
+            {pg.location?.coordinates?.length === 2 && (
+              <button
+                type="button"
+                onClick={() => setIsMapModalOpen(true)}
+                className="inline-flex items-center gap-1.5 rounded-lg border border-theme-brand/30 bg-theme-brand/10 px-2.5 py-1 text-xs font-semibold text-theme-brand hover:bg-theme-brand hover:text-white transition-all shadow-xs cursor-pointer active:scale-95"
+                title="Click to view interactive map location"
+              >
+                <MapIcon className="h-3.5 w-3.5" />
+                <span>View Location (Map)</span>
+              </button>
+            )}
             {calculatedDistanceKm !== null && (
               <span className="inline-flex items-center gap-1 rounded-full bg-theme-brand-subtle px-2.5 py-0.5 text-xs font-semibold text-theme-brand-text border border-theme-brand/20">
                 <Navigation className="h-3 w-3" />
@@ -348,9 +362,9 @@ export const PGDetailsPage = () => {
                 href={`https://www.google.com/maps/dir/?api=1&destination=${pg.location.coordinates[1]},${pg.location.coordinates[0]}`}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="inline-flex items-center gap-1 text-[11px] font-semibold text-theme-brand hover:underline"
+                className="inline-flex items-center gap-1 text-[11px] font-semibold text-theme-muted hover:text-theme-brand hover:underline"
               >
-                <span>Get Directions &rarr;</span>
+                <span>Directions &rarr;</span>
               </a>
             )}
           </div>
@@ -394,7 +408,16 @@ export const PGDetailsPage = () => {
         <div className="lg:col-span-2 space-y-3">
           <div className="relative h-96 w-full overflow-hidden rounded-2xl border border-theme-border bg-theme-surface-subtle">
             {primaryImage ? (
-              <img src={primaryImage} alt={pg.title} className="h-full w-full object-cover" />
+              <img
+                src={primaryImage}
+                alt={pg.title}
+                className="h-full w-full object-cover"
+                onError={(e) => {
+                  e.currentTarget.onerror = null;
+                  e.currentTarget.src =
+                    'https://images.unsplash.com/photo-1566665797739-1674de7a421a?auto=format&fit=crop&w=1000&q=80';
+                }}
+              />
             ) : (
               <div className="flex h-full w-full items-center justify-center text-theme-muted">
                 <Building2 className="h-12 w-12 stroke-[1.5]" />
@@ -701,6 +724,47 @@ export const PGDetailsPage = () => {
 
 
 
+      {/* Property Location & Map Section */}
+      <div className="my-8 rounded-2xl border border-theme-border bg-theme-surface p-6 shadow-xs">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 pb-4 border-b border-theme-border">
+          <div className="flex items-center gap-3">
+            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-theme-brand/10 text-theme-brand border border-theme-brand/20">
+              <MapPin className="h-5 w-5" />
+            </div>
+            <div>
+              <h2 className="text-base font-bold text-theme-primary">Location & Map</h2>
+              <p className="text-xs text-theme-muted">{pg.address}, {pg.area}, {pg.city}</p>
+            </div>
+          </div>
+          {pg.location?.coordinates?.length === 2 && (
+            <button
+              type="button"
+              onClick={() => setIsMapModalOpen(true)}
+              className="inline-flex items-center gap-1.5 rounded-xl bg-theme-brand px-3.5 py-2 text-xs font-semibold text-white shadow-xs hover:bg-theme-brand-hover transition-colors cursor-pointer"
+            >
+              <MapIcon className="h-4 w-4" />
+              <span>Open Interactive Map</span>
+            </button>
+          )}
+        </div>
+        <div className="mt-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 p-4 rounded-xl bg-theme-surface-subtle border border-theme-border/60 text-xs">
+          <div>
+            <p className="font-semibold text-theme-primary">Locality: {pg.area}, {pg.city}</p>
+            <p className="text-theme-muted mt-0.5">Click below to view the exact location, nearby landmarks, and map route directions.</p>
+          </div>
+          {pg.location?.coordinates?.length === 2 && (
+            <button
+              type="button"
+              onClick={() => setIsMapModalOpen(true)}
+              className="inline-flex items-center gap-1.5 rounded-lg border border-theme-border bg-theme-surface px-3 py-1.5 font-semibold text-theme-primary hover:bg-theme-surface-hover transition-colors shadow-xs cursor-pointer"
+            >
+              <MapPin className="h-3.5 w-3.5 text-theme-brand" />
+              <span>Show Map View</span>
+            </button>
+          )}
+        </div>
+      </div>
+
       {/* Verified Resident Reviews & Ratings Section */}
       <div className="my-8 rounded-2xl border border-theme-border bg-theme-surface p-6 shadow-xs space-y-6">
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 pb-4 border-b border-theme-border">
@@ -913,6 +977,13 @@ export const PGDetailsPage = () => {
         selectedRoom={selectedBookingRoom}
         isOpen={isBookingModalOpen}
         onClose={() => setIsBookingModalOpen(false)}
+      />
+
+      {/* Interactive Map Modal */}
+      <PGDetailMap
+        pg={pg}
+        isOpen={isMapModalOpen}
+        onClose={() => setIsMapModalOpen(false)}
       />
     </div>
   );

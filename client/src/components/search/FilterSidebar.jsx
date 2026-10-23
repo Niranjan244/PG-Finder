@@ -1,5 +1,5 @@
 import React from 'react';
-import { Search, RotateCcw, SlidersHorizontal, X } from 'lucide-react';
+import { Search, RotateCcw, SlidersHorizontal, X, DollarSign, Home, Check } from 'lucide-react';
 
 const AMENITY_OPTIONS = [
   'Air Conditioning',
@@ -57,71 +57,74 @@ export const FilterSidebar = ({
     <div className="space-y-6 text-xs text-theme-secondary">
       {/* Search Input */}
       <div>
-        <label className="block font-semibold uppercase tracking-wider text-theme-secondary mb-1.5">
-          Keywords / Property Name
+        <label className="block text-[11px] font-bold uppercase tracking-wider text-theme-muted mb-2">
+          Search Properties
         </label>
         <div className="relative">
+          <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-theme-muted" />
           <input
             type="text"
             name="q"
             value={filters.q || ''}
             onChange={handleTextChange}
             placeholder="e.g. Luxury PG, Koramangala..."
-            className="w-full rounded-lg border border-theme-border bg-theme-surface py-2 pl-9 pr-3 text-xs text-theme-primary placeholder-theme-muted focus:border-theme-brand focus:outline-none focus:ring-1 focus:ring-theme-brand transition-colors"
+            className="w-full rounded-xl border border-theme-border bg-theme-surface py-2.5 pl-10 pr-3 text-xs text-theme-primary placeholder-theme-muted focus:border-theme-brand focus:outline-none focus:ring-1 focus:ring-theme-brand shadow-xs transition-colors"
           />
-          <Search className="absolute left-3 top-2.5 h-3.5 w-3.5 text-theme-muted" />
         </div>
       </div>
 
       {/* City & Area */}
-      <div className="grid grid-cols-2 gap-2">
-        <div>
-          <label className="block font-semibold uppercase tracking-wider text-theme-secondary mb-1.5">
-            City
-          </label>
-          <input
-            type="text"
-            name="city"
-            value={filters.city || ''}
-            onChange={handleTextChange}
-            placeholder="Bangalore"
-            className="w-full rounded-lg border border-theme-border bg-theme-surface py-2 px-3 text-xs text-theme-primary placeholder-theme-muted focus:border-theme-brand focus:outline-none focus:ring-1 focus:ring-theme-brand transition-colors"
-          />
-        </div>
-        <div>
-          <label className="block font-semibold uppercase tracking-wider text-theme-secondary mb-1.5">
-            Locality / Area
-          </label>
-          <input
-            type="text"
-            name="area"
-            value={filters.area || ''}
-            onChange={handleTextChange}
-            placeholder="e.g. HSR Layout"
-            className="w-full rounded-lg border border-theme-border bg-theme-surface py-2 px-3 text-xs text-theme-primary placeholder-theme-muted focus:border-theme-brand focus:outline-none focus:ring-1 focus:ring-theme-brand transition-colors"
-          />
+      <div>
+        <label className="block text-[11px] font-bold uppercase tracking-wider text-theme-muted mb-2">
+          Location Details
+        </label>
+        <div className="grid grid-cols-2 gap-2">
+          <div>
+            <span className="block text-[10px] text-theme-muted mb-1 font-medium">City</span>
+            <input
+              type="text"
+              name="city"
+              value={filters.city || ''}
+              onChange={handleTextChange}
+              placeholder="e.g. Bangalore"
+              className="w-full rounded-xl border border-theme-border bg-theme-surface py-2 px-3 text-xs text-theme-primary placeholder-theme-muted focus:border-theme-brand focus:outline-none focus:ring-1 focus:ring-theme-brand shadow-xs transition-colors"
+            />
+          </div>
+          <div>
+            <span className="block text-[10px] text-theme-muted mb-1 font-medium">Locality / Area</span>
+            <input
+              type="text"
+              name="area"
+              value={filters.area || ''}
+              onChange={handleTextChange}
+              placeholder="e.g. HSR Layout"
+              className="w-full rounded-xl border border-theme-border bg-theme-surface py-2 px-3 text-xs text-theme-primary placeholder-theme-muted focus:border-theme-brand focus:outline-none focus:ring-1 focus:ring-theme-brand shadow-xs transition-colors"
+            />
+          </div>
         </div>
       </div>
 
       {/* Gender Category */}
       <div>
-        <label className="block font-semibold uppercase tracking-wider text-theme-secondary mb-2">
-          Gender Preference
+        <label className="block text-[11px] font-bold uppercase tracking-wider text-theme-muted mb-2">
+          Gender Category
         </label>
-        <div className="grid grid-cols-4 gap-1.5 rounded-lg bg-theme-surface-hover border border-theme-border p-1">
+        <div className="grid grid-cols-4 gap-1 rounded-xl bg-theme-surface-hover border border-theme-border p-1">
           {[
             { id: 'all', label: 'All' },
             { id: 'boys', label: 'Boys' },
             { id: 'girls', label: 'Girls' },
             { id: 'coliving', label: 'Co-Ed' },
           ].map((item) => {
-            const isSelected = (!filters.genderPreference && item.id === 'all') || filters.genderPreference === item.id;
+            const isSelected =
+              (!filters.genderPreference && item.id === 'all') ||
+              filters.genderPreference === item.id;
             return (
               <button
                 key={item.id}
                 type="button"
                 onClick={() => handleGenderChange(item.id)}
-                className={`rounded py-1.5 text-center text-xs font-semibold transition-all ${
+                className={`rounded-lg py-1.5 text-center text-xs font-semibold transition-all ${
                   isSelected
                     ? 'bg-theme-surface text-theme-brand shadow-xs border border-theme-border'
                     : 'text-theme-muted hover:text-theme-primary'
@@ -136,72 +139,116 @@ export const FilterSidebar = ({
 
       {/* Budget / Rent Range */}
       <div>
-        <label className="block font-semibold uppercase tracking-wider text-theme-secondary mb-2">
+        <label className="block text-[11px] font-bold uppercase tracking-wider text-theme-muted mb-2">
           Monthly Rent Budget (₹)
         </label>
         <div className="grid grid-cols-2 gap-2">
           <div>
-            <span className="text-[11px] text-theme-muted">Min Rent</span>
-            <input
-              type="number"
-              name="minRent"
-              value={filters.minRent || ''}
-              onChange={handleTextChange}
-              placeholder="₹ 3,000"
-              className="mt-1 w-full rounded-lg border border-theme-border bg-theme-surface py-1.5 px-3 text-xs text-theme-primary placeholder-theme-muted focus:border-theme-brand focus:outline-none focus:ring-1 focus:ring-theme-brand transition-colors"
-            />
+            <span className="block text-[10px] text-theme-muted mb-1 font-medium">Min Rent</span>
+            <div className="relative">
+              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-theme-muted text-xs">₹</span>
+              <input
+                type="number"
+                name="minRent"
+                value={filters.minRent || ''}
+                onChange={handleTextChange}
+                placeholder="3,000"
+                className="w-full rounded-xl border border-theme-border bg-theme-surface py-2 pl-7 pr-3 text-xs text-theme-primary placeholder-theme-muted focus:border-theme-brand focus:outline-none focus:ring-1 focus:ring-theme-brand shadow-xs transition-colors"
+              />
+            </div>
           </div>
           <div>
-            <span className="text-[11px] text-theme-muted">Max Rent</span>
-            <input
-              type="number"
-              name="maxRent"
-              value={filters.maxRent || ''}
-              onChange={handleTextChange}
-              placeholder="₹ 20,000"
-              className="mt-1 w-full rounded-lg border border-theme-border bg-theme-surface py-1.5 px-3 text-xs text-theme-primary placeholder-theme-muted focus:border-theme-brand focus:outline-none focus:ring-1 focus:ring-theme-brand transition-colors"
-            />
+            <span className="block text-[10px] text-theme-muted mb-1 font-medium">Max Rent</span>
+            <div className="relative">
+              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-theme-muted text-xs">₹</span>
+              <input
+                type="number"
+                name="maxRent"
+                value={filters.maxRent || ''}
+                onChange={handleTextChange}
+                placeholder="20,000"
+                className="w-full rounded-xl border border-theme-border bg-theme-surface py-2 pl-7 pr-3 text-xs text-theme-primary placeholder-theme-muted focus:border-theme-brand focus:outline-none focus:ring-1 focus:ring-theme-brand shadow-xs transition-colors"
+              />
+            </div>
           </div>
         </div>
       </div>
 
       {/* Room Sharing Type */}
       <div>
-        <label className="block font-semibold uppercase tracking-wider text-theme-secondary mb-2">
+        <label className="block text-[11px] font-bold uppercase tracking-wider text-theme-muted mb-2">
           Room Sharing Type
         </label>
-        <div className="space-y-2">
-          {ROOM_TYPE_OPTIONS.map((option) => (
-            <label key={option.id} className="flex items-center gap-2 cursor-pointer group">
-              <input
-                type="checkbox"
-                checked={selectedRoomTypes.includes(option.id)}
-                onChange={() => handleRoomTypeToggle(option.id)}
-                className="h-3.5 w-3.5 rounded border-theme-border bg-theme-surface text-theme-brand focus:ring-theme-brand"
-              />
-              <span className="text-theme-secondary group-hover:text-theme-primary transition-colors">{option.label}</span>
-            </label>
-          ))}
+        <div className="space-y-1.5">
+          {ROOM_TYPE_OPTIONS.map((option) => {
+            const isChecked = selectedRoomTypes.includes(option.id);
+            return (
+              <label
+                key={option.id}
+                className={`flex items-center gap-2.5 p-2 rounded-xl cursor-pointer transition-colors ${
+                  isChecked
+                    ? 'bg-theme-brand/10 text-theme-primary'
+                    : 'hover:bg-theme-surface-hover text-theme-secondary hover:text-theme-primary'
+                }`}
+              >
+                <div
+                  className={`flex h-4 w-4 shrink-0 items-center justify-center rounded border transition-colors ${
+                    isChecked
+                      ? 'bg-theme-brand border-theme-brand text-white'
+                      : 'border-theme-border bg-theme-surface'
+                  }`}
+                >
+                  {isChecked && <Check className="h-3 w-3 stroke-[3]" />}
+                </div>
+                <input
+                  type="checkbox"
+                  checked={isChecked}
+                  onChange={() => handleRoomTypeToggle(option.id)}
+                  className="sr-only"
+                />
+                <span className="font-medium text-xs">{option.label}</span>
+              </label>
+            );
+          })}
         </div>
       </div>
 
       {/* Amenities */}
       <div>
-        <label className="block font-semibold uppercase tracking-wider text-theme-secondary mb-2">
+        <label className="block text-[11px] font-bold uppercase tracking-wider text-theme-muted mb-2">
           Included Amenities
         </label>
-        <div className="space-y-2">
-          {AMENITY_OPTIONS.map((amenity) => (
-            <label key={amenity} className="flex items-center gap-2 cursor-pointer group">
-              <input
-                type="checkbox"
-                checked={selectedAmenities.includes(amenity)}
-                onChange={() => handleAmenityToggle(amenity)}
-                className="h-3.5 w-3.5 rounded border-theme-border bg-theme-surface text-theme-brand focus:ring-theme-brand"
-              />
-              <span className="text-theme-secondary group-hover:text-theme-primary transition-colors">{amenity}</span>
-            </label>
-          ))}
+        <div className="space-y-1.5">
+          {AMENITY_OPTIONS.map((amenity) => {
+            const isChecked = selectedAmenities.includes(amenity);
+            return (
+              <label
+                key={amenity}
+                className={`flex items-center gap-2.5 p-2 rounded-xl cursor-pointer transition-colors ${
+                  isChecked
+                    ? 'bg-theme-brand/10 text-theme-primary'
+                    : 'hover:bg-theme-surface-hover text-theme-secondary hover:text-theme-primary'
+                }`}
+              >
+                <div
+                  className={`flex h-4 w-4 shrink-0 items-center justify-center rounded border transition-colors ${
+                    isChecked
+                      ? 'bg-theme-brand border-theme-brand text-white'
+                      : 'border-theme-border bg-theme-surface'
+                  }`}
+                >
+                  {isChecked && <Check className="h-3 w-3 stroke-[3]" />}
+                </div>
+                <input
+                  type="checkbox"
+                  checked={isChecked}
+                  onChange={() => handleAmenityToggle(amenity)}
+                  className="sr-only"
+                />
+                <span className="font-medium text-xs">{amenity}</span>
+              </label>
+            );
+          })}
         </div>
       </div>
 
@@ -210,7 +257,7 @@ export const FilterSidebar = ({
         <button
           type="button"
           onClick={onResetFilters}
-          className="flex w-full items-center justify-center gap-1.5 rounded-lg border border-theme-border bg-theme-surface py-2 text-xs font-semibold text-theme-secondary hover:bg-theme-surface-hover hover:text-theme-primary transition-colors shadow-xs"
+          className="flex w-full items-center justify-center gap-2 rounded-xl border border-theme-border bg-theme-surface py-2.5 text-xs font-semibold text-theme-secondary hover:bg-theme-surface-hover hover:text-theme-primary hover:border-theme-border/80 transition-all shadow-xs active:scale-[0.98]"
         >
           <RotateCcw className="h-3.5 w-3.5 text-theme-muted" />
           <span>Reset All Filters</span>
@@ -222,12 +269,28 @@ export const FilterSidebar = ({
   return (
     <>
       {/* Desktop Sticky Sidebar */}
-      <aside className="hidden lg:block w-72 shrink-0 rounded-2xl border border-theme-border bg-theme-surface p-6 shadow-xs h-fit sticky top-24 transition-colors">
-        <div className="flex items-center justify-between pb-4 border-b border-theme-border mb-4">
+      <aside className="hidden lg:block w-72 xl:w-80 shrink-0 rounded-2xl border border-theme-border bg-theme-surface p-6 shadow-xs h-fit sticky top-24 transition-colors">
+        <div className="flex items-center justify-between pb-4 border-b border-theme-border mb-5">
           <div className="flex items-center gap-2">
             <SlidersHorizontal className="h-4 w-4 text-theme-brand" />
             <h2 className="text-sm font-bold text-theme-primary">Filters</h2>
           </div>
+          {(Boolean(filters.q) ||
+            Boolean(filters.city) ||
+            Boolean(filters.area) ||
+            Boolean(filters.genderPreference) ||
+            Boolean(filters.minRent) ||
+            Boolean(filters.maxRent) ||
+            Boolean(filters.roomType) ||
+            Boolean(filters.amenities)) && (
+            <button
+              type="button"
+              onClick={onResetFilters}
+              className="text-[11px] font-semibold text-theme-brand hover:underline"
+            >
+              Clear
+            </button>
+          )}
         </div>
         {filterContent}
       </aside>
@@ -244,7 +307,7 @@ export const FilterSidebar = ({
               <button
                 type="button"
                 onClick={onCloseMobile}
-                className="rounded-lg p-1 text-theme-muted hover:bg-theme-surface-hover hover:text-theme-primary"
+                className="rounded-lg p-1.5 text-theme-muted hover:bg-theme-surface-hover hover:text-theme-primary transition-colors"
               >
                 <X className="h-4 w-4" />
               </button>
