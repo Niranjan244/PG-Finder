@@ -77,18 +77,18 @@ export const Header = ({ searchMeta = {} }) => {
 
   return (
     <header className="sticky top-0 z-40 border-b border-theme-border bg-theme-surface/95 backdrop-blur-md transition-colors shadow-xs">
-      {/* Tier 1: Main Header Row */}
-      <div className="relative mx-auto flex h-14 max-w-[1760px] w-full items-center justify-between gap-2 sm:gap-4 px-4 sm:px-6 lg:px-8 xl:px-10">
+      {/* Main Header Row */}
+      <div className="relative mx-auto flex h-16 max-w-[1760px] w-full items-center justify-between gap-3 sm:gap-4 px-4 sm:px-6 lg:px-8 xl:px-10">
         {/* Brand Logo */}
-        <Link to={isAuthenticated ? '/search' : '/'} className="flex items-center gap-2 group shrink-0 z-10">
-          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-theme-brand text-white shadow-xs transition-transform duration-200 group-hover:scale-105 group-hover:bg-theme-brand-hover">
-            <Building2 className="h-4.5 w-4.5" />
+        <Link to={isAuthenticated ? '/search' : '/'} className="flex items-center gap-2.5 group shrink-0 z-10">
+          <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-theme-brand text-white shadow-xs transition-transform duration-200 group-hover:scale-105 group-hover:bg-theme-brand-hover">
+            <Building2 className="h-5 w-5" />
           </div>
-          <span className="text-base font-bold tracking-tight text-theme-primary hidden sm:inline">PG Finder</span>
+          <span className="text-lg font-bold tracking-tight text-theme-primary hidden sm:inline">PG Finder</span>
         </Link>
 
         {/* Center: Integrated Discovery Search Bar (Dead Center) */}
-        <div className="hidden md:block absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-full max-w-md lg:max-w-lg xl:max-w-2xl px-4 z-10">
+        <div className="hidden md:block absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-full max-w-lg lg:max-w-xl xl:max-w-2xl px-4 z-10">
           <HeaderSearchBar />
         </div>
 
@@ -98,28 +98,28 @@ export const Header = ({ searchMeta = {} }) => {
         </div>
 
         {/* Right Actions */}
-        <div className="flex items-center gap-2 sm:gap-2.5 shrink-0 z-10">
+        <div className="flex items-center gap-2 sm:gap-3 shrink-0 z-10">
           {isAuthenticated ? (
             <div className="flex items-center gap-2 sm:gap-2.5">
               {/* Clean Dashboard Pill Button */}
               <Link
                 to={getDashboardPath()}
-                className="inline-flex items-center gap-1.5 rounded-lg border border-theme-brand/20 bg-theme-brand/5 px-3 py-1.5 text-xs font-semibold text-theme-brand hover:bg-theme-brand/15 hover:border-theme-brand/40 transition-all shadow-xs"
+                className="inline-flex items-center gap-2 rounded-xl border border-theme-brand/20 bg-theme-brand/5 px-3.5 py-2 text-xs sm:text-sm font-semibold text-theme-brand hover:bg-theme-brand/15 hover:border-theme-brand/40 transition-all shadow-xs"
                 title="Go to Dashboard"
               >
-                <LayoutDashboard className="h-3.5 w-3.5" />
+                <LayoutDashboard className="h-4 w-4" />
                 <span className="hidden sm:inline">Dashboard</span>
               </Link>
 
               {/* Normal Chat Icon Button with Unread Badge */}
               <Link
                 to="/chat"
-                className="relative inline-flex items-center justify-center rounded-lg border border-theme-border bg-theme-surface p-2 text-theme-secondary hover:bg-theme-surface-hover hover:text-theme-primary hover:border-theme-border/80 transition-all active:scale-95 shadow-xs"
+                className="relative inline-flex h-10 w-10 items-center justify-center rounded-xl border border-theme-border bg-theme-surface text-theme-secondary hover:bg-theme-surface-hover hover:text-theme-primary hover:border-theme-border/80 transition-all active:scale-95 shadow-xs"
                 title="Direct Messages"
               >
-                <MessageSquare className="h-4 w-4 text-theme-muted" />
+                <MessageSquare className="h-5 w-5 text-theme-muted" />
                 {totalUnread > 0 && (
-                  <span className="absolute -top-1 -right-1 flex h-4 min-w-[16px] items-center justify-center rounded-full bg-rose-600 px-1 text-[10px] font-bold text-white shadow-xs animate-pulse">
+                  <span className="absolute -top-1 -right-1 flex h-4.5 min-w-[18px] items-center justify-center rounded-full bg-rose-600 px-1 text-[11px] font-bold text-white shadow-xs animate-pulse">
                     {totalUnread > 99 ? '99+' : totalUnread}
                   </span>
                 )}
@@ -128,24 +128,24 @@ export const Header = ({ searchMeta = {} }) => {
               {/* Notifications Dropdown (Bell icon) */}
               <NotificationDropdown />
 
-              <div className="h-4 w-px bg-theme-border mx-0.5 hidden sm:block" />
+              <div className="h-5 w-px bg-theme-border mx-0.5 hidden sm:block" />
 
               {/* User Profile Dropdown */}
               <div className="relative" ref={userMenuRef}>
                 <button
                   type="button"
                   onClick={() => setIsUserMenuOpen(!isUserMenuOpen)}
-                  className="flex items-center gap-1.5 rounded-lg border border-theme-border bg-theme-surface p-1 sm:px-2 sm:py-1 text-xs font-medium text-theme-primary hover:bg-theme-surface-hover hover:border-theme-border/80 transition-all shadow-xs"
+                  className="flex items-center gap-2 rounded-xl border border-theme-border bg-theme-surface p-1 sm:px-2.5 sm:py-1.5 text-xs sm:text-sm font-medium text-theme-primary hover:bg-theme-surface-hover hover:border-theme-border/80 transition-all shadow-xs"
                   aria-expanded={isUserMenuOpen}
                   aria-haspopup="true"
                 >
-                  <div className="flex h-6 w-6 items-center justify-center rounded-full bg-theme-brand text-white font-bold text-[11px] uppercase shadow-xs">
+                  <div className="flex h-7 w-7 items-center justify-center rounded-full bg-theme-brand text-white font-bold text-xs uppercase shadow-xs">
                     {user.name ? user.name.charAt(0) : 'U'}
                   </div>
-                  <span className="hidden md:inline text-xs font-semibold text-theme-primary leading-tight max-w-[100px] truncate">
+                  <span className="hidden md:inline text-xs sm:text-sm font-semibold text-theme-primary leading-tight max-w-[120px] truncate">
                     {user.name}
                   </span>
-                  <ChevronDown className={`h-3 w-3 text-theme-muted transition-transform duration-200 hidden sm:inline ${isUserMenuOpen ? 'rotate-180' : ''}`} />
+                  <ChevronDown className={`h-3.5 w-3.5 text-theme-muted transition-transform duration-200 hidden sm:inline ${isUserMenuOpen ? 'rotate-180' : ''}`} />
                 </button>
 
                 {isUserMenuOpen && (

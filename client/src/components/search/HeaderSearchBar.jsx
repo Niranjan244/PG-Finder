@@ -169,7 +169,7 @@ export const HeaderSearchBar = () => {
             className="pl-3.5 pr-1.5 text-theme-muted hover:text-theme-brand transition-colors cursor-pointer"
             title="Search"
           >
-            <Search className="h-4 w-4" />
+            <Search className="h-4.5 w-4.5" />
           </button>
 
           <input
@@ -180,7 +180,7 @@ export const HeaderSearchBar = () => {
               if (suggestions.length > 0) setIsDropdownOpen(true);
             }}
             placeholder="Search for PG..."
-            className="w-full bg-transparent py-1.5 sm:py-2 text-xs sm:text-sm text-theme-primary placeholder-theme-muted focus:outline-none"
+            className="w-full bg-transparent py-2 sm:py-2.5 text-xs sm:text-sm text-theme-primary placeholder-theme-muted focus:outline-none"
           />
 
           <div className="pr-1.5 flex items-center gap-1 shrink-0">
@@ -201,7 +201,7 @@ export const HeaderSearchBar = () => {
 
             <button
               type="submit"
-              className="inline-flex items-center gap-1 rounded-full bg-theme-brand px-3.5 py-1 text-xs font-semibold text-white shadow-xs hover:bg-theme-brand-hover active:scale-95 transition-all cursor-pointer"
+              className="inline-flex items-center gap-1 rounded-full bg-theme-brand px-4 py-1.5 text-xs sm:text-sm font-semibold text-white shadow-xs hover:bg-theme-brand-hover active:scale-95 transition-all cursor-pointer"
             >
               <span>Search</span>
             </button>

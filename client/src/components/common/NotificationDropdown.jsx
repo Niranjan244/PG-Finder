@@ -132,12 +132,12 @@ export const NotificationDropdown = () => {
       <button
         type="button"
         onClick={toggleNotifDropdown}
-        className="relative inline-flex items-center justify-center rounded-lg border border-theme-border bg-theme-surface p-2 text-theme-secondary hover:bg-theme-surface-hover hover:text-theme-primary transition-colors shadow-xs"
+        className="relative inline-flex h-10 w-10 items-center justify-center rounded-xl border border-theme-border bg-theme-surface text-theme-secondary hover:bg-theme-surface-hover hover:text-theme-primary hover:border-theme-border/80 transition-all active:scale-95 shadow-xs"
         title="Notifications"
       >
-        <Bell className="h-4 w-4 text-theme-muted" />
+        <Bell className="h-5 w-5 text-theme-muted" />
         {unreadNotifications > 0 && (
-          <span className="absolute -top-1 -right-1 flex h-4 min-w-[16px] items-center justify-center rounded-full bg-rose-600 px-1 text-[10px] font-bold text-white shadow-xs">
+          <span className="absolute -top-1 -right-1 flex h-4.5 min-w-[18px] items-center justify-center rounded-full bg-rose-600 px-1 text-[11px] font-bold text-white shadow-xs animate-pulse">
             {unreadNotifications > 99 ? '99+' : unreadNotifications}
           </span>
         )}
