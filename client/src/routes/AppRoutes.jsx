@@ -37,7 +37,7 @@ const PublicAuthRoute = ({ children }) => {
   if (isAuthenticated && user) {
     if (user.role === 'admin') return <Navigate to="/dashboard/admin" replace />;
     if (user.role === 'owner') return <Navigate to="/dashboard/owner" replace />;
-    return <Navigate to="/dashboard/tenant" replace />;
+    return <Navigate to="/search" replace />;
   }
 
   return children;

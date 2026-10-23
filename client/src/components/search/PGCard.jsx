@@ -90,7 +90,7 @@ export const PGCard = ({ pg }) => {
         search: typeof window !== 'undefined' ? window.location.search : '',
         hash: '#rooms',
       }}
-      className="group relative flex flex-col overflow-hidden rounded-2xl border border-theme-border bg-theme-surface shadow-xs transition-all duration-300 hover:-translate-y-1 hover:border-theme-brand/50 hover:shadow-xl"
+      className="group relative flex flex-col overflow-hidden rounded-2xl border border-slate-200/90 dark:border-slate-800/90 bg-white dark:bg-slate-900 shadow-xs transition-all duration-300 hover:-translate-y-1 hover:border-theme-brand hover:ring-1 hover:ring-theme-brand/30 hover:shadow-md"
     >
       {/* Media Image Container with Aspect Ratio */}
       <div className="relative aspect-[16/10] w-full overflow-hidden bg-theme-surface-hover">
@@ -225,18 +225,18 @@ export const PGCard = ({ pg }) => {
           {/* Feature Tags / Amenities */}
           <div className="mt-3.5 flex flex-wrap gap-1.5 text-xs">
             {pg.foodDetails?.available && (
-              <span className="inline-flex items-center gap-1 rounded-lg bg-theme-surface-hover px-2 py-1 text-[11px] font-medium text-theme-secondary border border-theme-border/60 transition-colors group-hover:border-theme-border">
+              <span className="inline-flex items-center gap-1 rounded-lg bg-slate-50 dark:bg-slate-800/60 px-2 py-1 text-[11px] font-medium text-theme-secondary border border-slate-200/80 dark:border-slate-700/60 transition-colors group-hover:border-slate-300 dark:group-hover:border-slate-600">
                 <Utensils className="h-3 w-3 text-amber-500" />
                 <span>Food Inc.</span>
               </span>
             )}
             {pg.wifi && (
-              <span className="inline-flex items-center gap-1 rounded-lg bg-theme-surface-hover px-2 py-1 text-[11px] font-medium text-theme-secondary border border-theme-border/60 transition-colors group-hover:border-theme-border">
+              <span className="inline-flex items-center gap-1 rounded-lg bg-slate-50 dark:bg-slate-800/60 px-2 py-1 text-[11px] font-medium text-theme-secondary border border-slate-200/80 dark:border-slate-700/60 transition-colors group-hover:border-slate-300 dark:group-hover:border-slate-600">
                 <Wifi className="h-3 w-3 text-sky-500" />
                 <span>Wi-Fi</span>
               </span>
             )}
-            <span className="inline-flex items-center gap-1 rounded-lg bg-theme-surface-hover px-2 py-1 text-[11px] font-medium text-theme-secondary border border-theme-border/60 transition-colors group-hover:border-theme-border">
+            <span className="inline-flex items-center gap-1 rounded-lg bg-slate-50 dark:bg-slate-800/60 px-2 py-1 text-[11px] font-medium text-theme-secondary border border-slate-200/80 dark:border-slate-700/60 transition-colors group-hover:border-slate-300 dark:group-hover:border-slate-600">
               <BedDouble className="h-3 w-3 text-indigo-500" />
               <span>{summary.totalRooms || 0} Rooms</span>
             </span>

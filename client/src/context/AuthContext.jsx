@@ -7,11 +7,21 @@ export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
 
+  const resetActivityTimestamp = () => {
+    try {
+      localStorage.setItem('pg_last_active', Date.now().toString());
+      localStorage.removeItem('pg_session_logout');
+    } catch {
+      // Ignore storage errors
+    }
+  };
+
   const checkAuth = async () => {
     try {
       const response = await getMeApi();
       if (response?.data?.user) {
         setUser(response.data.user);
+        resetActivityTimestamp();
       } else {
         setUser(null);
       }
@@ -30,6 +40,7 @@ export const AuthProvider = ({ children }) => {
     const response = await loginApi(credentials);
     const authenticatedUser = response?.data?.user;
     setUser(authenticatedUser);
+    resetActivityTimestamp();
     return authenticatedUser;
   };
 
@@ -37,6 +48,7 @@ export const AuthProvider = ({ children }) => {
     const response = await registerApi(userData);
     const registeredUser = response?.data?.user;
     setUser(registeredUser);
+    resetActivityTimestamp();
     return registeredUser;
   };
 
@@ -45,11 +57,17 @@ export const AuthProvider = ({ children }) => {
       await logoutApi();
     } finally {
       setUser(null);
+      try {
+        localStorage.removeItem('pg_last_active');
+      } catch {
+        // Ignore
+      }
     }
   };
 
   const setAuthUser = (userData) => {
     setUser(userData);
+    resetActivityTimestamp();
     return userData;
   };
 

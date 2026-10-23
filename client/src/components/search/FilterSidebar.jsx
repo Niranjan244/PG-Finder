@@ -68,7 +68,7 @@ export const FilterSidebar = ({
             value={filters.q || ''}
             onChange={handleTextChange}
             placeholder="e.g. Luxury PG, Koramangala..."
-            className="w-full rounded-xl border border-theme-border bg-theme-surface py-2.5 pl-10 pr-3 text-xs text-theme-primary placeholder-theme-muted focus:border-theme-brand focus:outline-none focus:ring-1 focus:ring-theme-brand shadow-xs transition-colors"
+            className="w-full rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50/70 dark:bg-slate-800/50 py-2.5 pl-10 pr-3 text-xs text-theme-primary placeholder-theme-muted focus:border-theme-brand focus:outline-none focus:ring-1 focus:ring-theme-brand shadow-xs transition-colors"
           />
         </div>
       </div>
@@ -87,7 +87,7 @@ export const FilterSidebar = ({
               value={filters.city || ''}
               onChange={handleTextChange}
               placeholder="e.g. Bangalore"
-              className="w-full rounded-xl border border-theme-border bg-theme-surface py-2 px-3 text-xs text-theme-primary placeholder-theme-muted focus:border-theme-brand focus:outline-none focus:ring-1 focus:ring-theme-brand shadow-xs transition-colors"
+              className="w-full rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50/70 dark:bg-slate-800/50 py-2 px-3 text-xs text-theme-primary placeholder-theme-muted focus:border-theme-brand focus:outline-none focus:ring-1 focus:ring-theme-brand shadow-xs transition-colors"
             />
           </div>
           <div>
@@ -98,7 +98,7 @@ export const FilterSidebar = ({
               value={filters.area || ''}
               onChange={handleTextChange}
               placeholder="e.g. HSR Layout"
-              className="w-full rounded-xl border border-theme-border bg-theme-surface py-2 px-3 text-xs text-theme-primary placeholder-theme-muted focus:border-theme-brand focus:outline-none focus:ring-1 focus:ring-theme-brand shadow-xs transition-colors"
+              className="w-full rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50/70 dark:bg-slate-800/50 py-2 px-3 text-xs text-theme-primary placeholder-theme-muted focus:border-theme-brand focus:outline-none focus:ring-1 focus:ring-theme-brand shadow-xs transition-colors"
             />
           </div>
         </div>
@@ -109,7 +109,7 @@ export const FilterSidebar = ({
         <label className="block text-[11px] font-bold uppercase tracking-wider text-theme-muted mb-2">
           Gender Category
         </label>
-        <div className="grid grid-cols-4 gap-1 rounded-xl bg-theme-surface-hover border border-theme-border p-1">
+        <div className="grid grid-cols-4 gap-1 rounded-xl bg-slate-50/80 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 p-1">
           {[
             { id: 'all', label: 'All' },
             { id: 'boys', label: 'Boys' },
@@ -269,7 +269,7 @@ export const FilterSidebar = ({
   return (
     <>
       {/* Desktop Sticky Sidebar */}
-      <aside className="hidden lg:block w-72 xl:w-80 shrink-0 rounded-2xl border border-theme-border bg-theme-surface p-6 shadow-xs h-fit sticky top-24 transition-colors">
+      <aside className="hidden lg:block w-72 xl:w-80 shrink-0 rounded-2xl border border-slate-200/90 dark:border-slate-800/90 bg-white dark:bg-slate-900 p-6 shadow-xs h-fit sticky top-24 transition-colors">
         <div className="flex items-center justify-between pb-4 border-b border-theme-border mb-5">
           <div className="flex items-center gap-2">
             <SlidersHorizontal className="h-4 w-4 text-theme-brand" />
@@ -298,7 +298,7 @@ export const FilterSidebar = ({
       {/* Mobile Drawer Modal */}
       {isOpenMobile && (
         <div className="fixed inset-0 z-50 flex lg:hidden bg-slate-900/60 backdrop-blur-xs">
-          <div className="relative ml-auto flex h-full w-full max-w-xs flex-col bg-theme-surface border-l border-theme-border p-6 shadow-xl overflow-y-auto">
+          <div className="relative ml-auto flex h-full w-full max-w-xs flex-col bg-white dark:bg-slate-900 border-l border-slate-200/90 dark:border-slate-800/90 p-6 shadow-xl overflow-y-auto">
             <div className="flex items-center justify-between pb-4 border-b border-theme-border mb-4">
               <div className="flex items-center gap-2">
                 <SlidersHorizontal className="h-4 w-4 text-theme-brand" />

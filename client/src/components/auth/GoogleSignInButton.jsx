@@ -272,14 +272,23 @@ export const GoogleSignInButton = ({ onErrorMessage }) => {
         code,
       });
 
-      const data = response?.data?.data || response?.data || {};
-      const authenticatedUser = data.user;
+      const authenticatedUser =
+        response?.data?.user ||
+        response?.data?.data?.user ||
+        response?.user ||
+        response?.data ||
+        {};
 
       setShow2FAModal(false);
       setTwoFactorToken('');
       setOtpDigits(['', '', '', '', '', '']);
-      setAuthUser(authenticatedUser);
-      handleRedirectByRole(authenticatedUser.role);
+
+      if (authenticatedUser && (authenticatedUser.id || authenticatedUser.role || authenticatedUser.email)) {
+        setAuthUser(authenticatedUser);
+        handleRedirectByRole(authenticatedUser.role || 'tenant');
+      } else {
+        throw new Error('Verification succeeded but user profile was not returned. Please try signing in again.');
+      }
     } catch (error) {
       const serverMsg =
         error?.response?.data?.message ||

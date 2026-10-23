@@ -20,12 +20,25 @@ export const SessionTimeoutManager = () => {
   const showModalRef = useRef(false);
   showModalRef.current = showModal;
 
-  // Sync initial activity time from localStorage if present
+  // Sync initial activity time on login, resetting stale timestamps
   useEffect(() => {
     if (isAuthenticated) {
+      const now = Date.now();
       const stored = localStorage.getItem('pg_last_active');
-      const parsed = stored ? parseInt(stored, 10) : Date.now();
-      lastActiveRef.current = Number.isNaN(parsed) ? Date.now() : parsed;
+      const parsed = stored ? parseInt(stored, 10) : now;
+
+      // Only preserve stored timestamp if it is recent (under 10 minutes)
+      if (!Number.isNaN(parsed) && now - parsed < INACTIVITY_LIMIT_MS) {
+        lastActiveRef.current = parsed;
+      } else {
+        lastActiveRef.current = now;
+        try {
+          localStorage.setItem('pg_last_active', now.toString());
+          localStorage.removeItem('pg_session_logout');
+        } catch {
+          // Ignore storage errors
+        }
+      }
     }
   }, [isAuthenticated]);
 
