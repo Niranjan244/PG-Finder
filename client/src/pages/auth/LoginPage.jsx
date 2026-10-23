@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext.jsx';
 import { loginSchema } from '../../validators/authSchemas.js';
 import { GoogleSignInButton } from '../../components/auth/GoogleSignInButton.jsx';
@@ -25,9 +25,12 @@ import {
 export const LoginPage = () => {
   const { login } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
   const [serverError, setServerError] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [isInteractive, setIsInteractive] = useState(false);
+
+  const isSessionTimeout = new URLSearchParams(location.search).get('reason') === 'inactivity';
 
   const {
     register,
@@ -227,6 +230,16 @@ export const LoginPage = () => {
                 Sign in to access your PG bookings, saved stays, or owner dashboard.
               </p>
             </div>
+
+            {/* Session Inactivity Timeout Notice */}
+            {isSessionTimeout && !serverError && (
+              <div className="mb-4 flex items-start gap-2.5 rounded-xl border border-amber-500/30 bg-amber-500/10 p-3.5 text-xs text-amber-700 dark:text-amber-300">
+                <AlertCircle className="h-4 w-4 shrink-0 text-amber-500 mt-0.5" />
+                <span>
+                  Your session expired after 10 minutes of inactivity. Please sign in to continue.
+                </span>
+              </div>
+            )}
 
             {/* Server Error Alert */}
             {serverError && (
