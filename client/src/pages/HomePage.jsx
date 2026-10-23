@@ -34,27 +34,22 @@ export const HomePage = () => {
     return <Navigate to="/dashboard/tenant" replace />;
   }
 
-  // Public Landing Page with Ambient Background Canvas
+  // Public Landing Page with Ambient Aura Glow Canvas (Matches Reference UI)
   return (
-    <div className="min-h-screen flex flex-col bg-theme-bg text-theme-primary transition-colors relative overflow-hidden selection:bg-brand-500 selection:text-white">
-      {/* Global Architectural Grid Layer */}
-      <div
-        className="absolute inset-0 pointer-events-none opacity-[0.45] dark:opacity-[0.25]"
-        style={{
-          backgroundImage: `
-            linear-gradient(to right, rgba(148, 163, 184, 0.12) 1px, transparent 1px),
-            linear-gradient(to bottom, rgba(148, 163, 184, 0.12) 1px, transparent 1px)
-          `,
-          backgroundSize: '40px 40px',
-          maskImage: 'radial-gradient(ellipse 90% 85% at 50% 15%, black 40%, transparent 95%)',
-          WebkitMaskImage: 'radial-gradient(ellipse 90% 85% at 50% 15%, black 40%, transparent 95%)',
-        }}
-      />
-
-      {/* Layered Multi-Point Ambient Light Glows */}
-      <div className="absolute -top-32 left-1/2 -translate-x-1/2 w-[900px] h-[500px] bg-gradient-to-b from-brand-500/18 via-sky-500/10 to-transparent dark:from-brand-400/22 dark:via-sky-400/12 dark:to-transparent blur-[140px] rounded-full pointer-events-none" />
-      <div className="absolute top-[650px] left-10 w-[450px] h-[350px] bg-indigo-500/7 dark:bg-indigo-500/12 blur-[130px] rounded-full pointer-events-none" />
-      <div className="absolute top-[1200px] right-10 w-[500px] h-[380px] bg-emerald-500/6 dark:bg-emerald-500/10 blur-[130px] rounded-full pointer-events-none" />
+    <div className="min-h-screen flex flex-col bg-theme-bg text-theme-primary transition-colors relative overflow-hidden">
+      {/* 
+        Smooth Luminous Aurora Aura Glow
+        - Warm amber-gold radial glow in center
+        - Soft violet-indigo ambient glow on upper quadrant
+      */}
+      <div className="absolute inset-0 pointer-events-none overflow-hidden">
+        {/* Soft upper violet glow */}
+        <div className="absolute -top-24 right-1/4 w-[700px] h-[450px] bg-purple-500/12 dark:bg-purple-600/18 blur-[150px] rounded-full" />
+        {/* Central warm amber light glow */}
+        <div className="absolute top-56 left-1/2 -translate-x-1/2 w-[750px] h-[420px] bg-amber-400/18 dark:bg-amber-500/12 blur-[160px] rounded-full" />
+        {/* Lower subtle glow */}
+        <div className="absolute top-[900px] left-10 w-[500px] h-[350px] bg-indigo-500/8 dark:bg-indigo-500/12 blur-[140px] rounded-full" />
+      </div>
 
       <Navbar />
       <main className="flex-1 relative z-10">

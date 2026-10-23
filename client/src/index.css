@@ -5,16 +5,19 @@
 
 :root {
   color-scheme: light;
-  --color-bg: #f8fafc;
+  /* Soft pale slate-blue brand tint - never plain white or plain gray */
+  --color-bg: #f2f5f9;
+  --color-bg-gradient: linear-gradient(180deg, #f4f7fb 0%, #edf2f7 100%);
   --color-surface: #ffffff;
-  --color-surface-hover: #f1f5f9;
-  --color-surface-subtle: #f8fafc;
-  --color-border: #cbd5e1;
-  --color-border-subtle: #e2e8f0;
-  /* High contrast readable text in light mode - never faint */
+  --color-surface-hover: #f8fafc;
+  --color-surface-subtle: #f1f5f9;
+  --color-sidebar: #ffffff;
+  --color-border: #e2e8f0;
+  --color-border-subtle: #edf2f7;
+  /* High contrast readable text in light mode - WCAG AA compliant */
   --color-text-primary: #0f172a;
   --color-text-secondary: #334155;
-  --color-text-muted: #475569;
+  --color-text-muted: #64748b;
   --color-brand: #026fc7;
   --color-brand-hover: #0358a1;
   --color-brand-subtle: #eff6ff;
@@ -32,29 +35,31 @@
 
 .dark {
   color-scheme: dark;
-  /* Soft dark grays - never pure #000 */
-  --color-bg: #0f172a;
-  --color-surface: #1e293b;
-  --color-surface-hover: #334155;
-  --color-surface-subtle: #162032;
-  --color-border: #334155;
-  --color-border-subtle: #1e293b;
+  /* Deep navy with calm brand tint - never pure #000 or plain gray */
+  --color-bg: #0b1120;
+  --color-bg-gradient: linear-gradient(180deg, #0b1120 0%, #0d1527 100%);
+  --color-surface: #131d31;
+  --color-surface-hover: #1a263e;
+  --color-surface-subtle: #162136;
+  --color-sidebar: #0f1728;
+  --color-border: #1e2b42;
+  --color-border-subtle: #162136;
   /* Off-white readable text - never pure #fff */
   --color-text-primary: #f8fafc;
   --color-text-secondary: #cbd5e1;
   --color-text-muted: #94a3b8;
-  --color-brand: #38a8f8;
+  --color-brand: #38bdf8;
   --color-brand-hover: #7cc7fb;
-  --color-brand-subtle: #0f2744;
+  --color-brand-subtle: #0c243f;
   --color-brand-text: #7cc7fb;
   --color-success: #22c55e;
-  --color-success-subtle: #064e3b;
+  --color-success-subtle: #052e16;
   --color-success-text: #4ade80;
   --color-warning: #f59e0b;
-  --color-warning-subtle: #451a03;
+  --color-warning-subtle: #381c04;
   --color-warning-text: #fbbf24;
   --color-error: #ef4444;
-  --color-error-subtle: #450a0a;
+  --color-error-subtle: #3b0d0c;
   --color-error-text: #f87171;
 }
 
@@ -99,12 +104,17 @@
 .border-theme-border-subtle {
   border-color: var(--color-border-subtle) !important;
 }
+.bg-theme-sidebar {
+  background-color: var(--color-sidebar) !important;
+}
 
 body {
-  font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  font-family: 'Plus Jakarta Sans', 'Inter', system-ui, -apple-system, sans-serif;
   margin: 0;
   min-height: 100vh;
   background-color: var(--color-bg);
+  background-image: var(--color-bg-gradient);
+  background-attachment: fixed;
   color: var(--color-text-primary);
   /* Smooth color transition without causing layout shift or flicker */
   transition: background-color 0.15s ease, color 0.15s ease;

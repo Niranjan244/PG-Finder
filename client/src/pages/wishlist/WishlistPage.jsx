@@ -25,7 +25,7 @@ export const WishlistPage = () => {
   const pagination = wishlistData?.data?.pagination || { total: 0, page: 1, totalPages: 1 };
 
   return (
-    <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8 space-y-6">
+    <div className="space-y-6">
       {/* Page Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 pb-4 border-b border-theme-border">
         <div>

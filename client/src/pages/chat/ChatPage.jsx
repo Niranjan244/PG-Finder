@@ -402,7 +402,7 @@ export const ChatPage = () => {
   });
 
   return (
-    <div className="mx-auto max-w-7xl px-3 sm:px-6 lg:px-8 py-3 flex flex-col h-[calc(100vh-80px)] min-h-[500px]">
+    <div className="flex flex-col h-[calc(100vh-140px)] min-h-[500px]">
       <div className="flex-1 min-h-0 rounded-2xl border border-theme-border bg-theme-surface shadow-xs overflow-hidden flex flex-col md:flex-row transition-colors">
         {/* Left Sidebar: Conversations List */}
         <div

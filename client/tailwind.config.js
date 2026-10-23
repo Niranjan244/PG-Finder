@@ -13,6 +13,7 @@ export default {
           surface: 'var(--color-surface)',
           'surface-hover': 'var(--color-surface-hover)',
           'surface-subtle': 'var(--color-surface-subtle)',
+          sidebar: 'var(--color-sidebar)',
           border: 'var(--color-border)',
           'border-subtle': 'var(--color-border-subtle)',
           primary: 'var(--color-text-primary)',
@@ -48,6 +49,7 @@ export default {
       fontFamily: {
         sans: ['"Plus Jakarta Sans"', 'Inter', 'system-ui', '-apple-system', 'sans-serif'],
         display: ['"Plus Jakarta Sans"', 'sans-serif'],
+        serif: ['"Playfair Display"', 'Georgia', 'serif'],
       },
     },
   },

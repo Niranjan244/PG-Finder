@@ -207,7 +207,7 @@ export const PGRoomsPage = () => {
   const availableBeds = Math.max(0, totalCapacity - totalOccupied);
 
   return (
-    <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8 space-y-6">
+    <div className="space-y-6">
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 pb-6 border-b border-theme-border">
         <div>

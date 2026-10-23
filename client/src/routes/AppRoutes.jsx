@@ -1,6 +1,7 @@
 import React from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
 import { MainLayout } from '../layouts/MainLayout.jsx';
+import { DashboardLayout } from '../layouts/DashboardLayout.jsx';
 import { HomePage } from '../pages/HomePage.jsx';
 import { LoginPage } from '../pages/auth/LoginPage.jsx';
 import { RegisterPage } from '../pages/auth/RegisterPage.jsx';
@@ -48,7 +49,7 @@ export const AppRoutes = () => {
       {/* Standalone Landing Page (includes its own dedicated Figma-style Navbar & Footer) */}
       <Route path="/" element={<HomePage />} />
 
-      {/* Main Layout routes */}
+      {/* Main Layout routes (Public & Auth Pages) */}
       <Route element={<MainLayout />}>
         <Route
           path="login"
@@ -91,12 +92,18 @@ export const AppRoutes = () => {
           }
         />
 
-        {/* Public General PG Finder Routes (Accessible to guests and authenticated users) */}
+        {/* Public Accommodations Discovery */}
         <Route path="search" element={<SearchPage />} />
         <Route path="pg/:id" element={<PGDetailsPage />} />
 
-        {/* Protected General PG Finder Routes (Accessible to all authenticated roles) */}
-        <Route element={<ProtectedRoute />}>
+        {/* Catch-all 404 */}
+        <Route path="*" element={<NotFoundPage />} />
+      </Route>
+
+      {/* Dedicated Clean SaaS Dashboard Layout for Authenticated Portals */}
+      <Route element={<ProtectedRoute />}>
+        <Route element={<DashboardLayout />}>
+          {/* General Authenticated Features */}
           <Route path="chat" element={<ChatPage />} />
           <Route path="wishlist" element={<WishlistPage />} />
 
@@ -124,9 +131,6 @@ export const AppRoutes = () => {
             <Route path="admin/payments" element={<AdminPaymentsPage />} />
           </Route>
         </Route>
-
-        {/* Catch-all 404 */}
-        <Route path="*" element={<NotFoundPage />} />
       </Route>
     </Routes>
   );

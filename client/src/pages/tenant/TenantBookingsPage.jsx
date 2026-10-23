@@ -6,6 +6,7 @@ import { getMyBookingsApi, cancelBookingApi } from '../../services/bookingClient
 import { createPaymentOrderApi, verifyPaymentApi } from '../../services/paymentClient.js';
 import { loadRazorpayScript } from '../../utils/loadRazorpay.js';
 import { BookingStatusBadge } from '../../components/booking/BookingStatusBadge.jsx';
+import { PageHeader } from '../../components/dashboard/PageHeader.jsx';
 import {
   Building2,
   Calendar,
@@ -165,7 +166,7 @@ export const TenantBookingsPage = () => {
   };
 
   return (
-    <div className="mx-auto max-w-5xl px-4 py-8 sm:px-6 lg:px-8 space-y-6">
+    <div className="space-y-6">
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 pb-4 border-b border-theme-border">
         <div>

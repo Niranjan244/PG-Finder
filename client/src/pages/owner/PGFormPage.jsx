@@ -362,7 +362,7 @@ export const PGFormPage = () => {
   }
 
   return (
-    <div className="mx-auto max-w-4xl px-4 py-8 sm:px-6 lg:px-8">
+    <div className="space-y-6">
       {/* Top Header */}
       <div className="flex items-center justify-between pb-6 border-b border-slate-200">
         <div>

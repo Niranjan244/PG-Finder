@@ -33,7 +33,7 @@ export const HowItWorks = () => {
     <section id="how-it-works" className="py-16 sm:py-20 border-b border-theme-border transition-colors">
       <div className="mx-auto max-w-[1200px] px-4 sm:px-6 lg:px-8">
         <div className="text-center max-w-2xl mx-auto">
-          <h2 className="text-2xl font-bold tracking-tight text-theme-primary sm:text-3xl">
+          <h2 className="font-serif text-2xl font-bold tracking-tight text-theme-primary sm:text-3xl">
             How it works
           </h2>
           <p className="mt-2 text-xs sm:text-sm text-theme-secondary">

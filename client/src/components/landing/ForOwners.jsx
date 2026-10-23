@@ -13,7 +13,7 @@ export const ForOwners = () => {
               <span>For Property Owners & Managers</span>
             </div>
 
-            <h2 className="text-2xl font-bold tracking-tight text-theme-primary sm:text-3xl">
+            <h2 className="font-serif text-2xl font-bold tracking-tight text-theme-primary sm:text-3xl">
               Own a PG? List your property with zero brokerage.
             </h2>
 
