@@ -33,6 +33,16 @@
   --color-error-text: #b91c1c;
 }
 
+/* Prevent aggressive browser autofill blue tint and keep theme colors */
+input:-webkit-autofill,
+input:-webkit-autofill:hover,
+input:-webkit-autofill:focus,
+input:-webkit-autofill:active {
+  -webkit-box-shadow: 0 0 0 1000px var(--color-surface) inset !important;
+  -webkit-text-fill-color: var(--color-text-primary) !important;
+  transition: background-color 5000s ease-in-out 0s;
+}
+
 .dark {
   color-scheme: dark;
   /* Deep navy with calm brand tint - never pure #000 or plain gray */

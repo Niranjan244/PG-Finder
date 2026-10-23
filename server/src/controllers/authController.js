@@ -6,6 +6,9 @@ import {
   resetPasswordWithToken,
   verifyFirebaseToken,
   findOrLinkFirebaseUser,
+  generateAndSendTwoFactorCode,
+  verifyTwoFactorCode,
+  resendTwoFactorCode,
 } from '../services/authService.js';
 import { generateAuthCookie, clearAuthCookie } from '../utils/token.js';
 import { sendSuccess } from '../utils/apiResponse.js';
@@ -88,10 +91,41 @@ export const firebaseAuth = async (req, res, next) => {
       });
     }
 
-    generateAuthCookie(res, result.user.id, result.user.role);
-    return sendSuccess(res, 200, 'Successfully authenticated with Google', {
-      user: result.user,
+    // Step 2: Trigger Two-Step Verification email to the user's logged-in Gmail
+    const twoFactorResult = await generateAndSendTwoFactorCode({
+      userId: result.user.id,
+      email: result.user.email,
+      name: result.user.name,
     });
+
+    return sendSuccess(res, 200, 'Two-step verification code sent to your Google account email', {
+      requires2FA: true,
+      tempToken: twoFactorResult.tempToken,
+      email: result.user.email,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const verifyTwoFactor = async (req, res, next) => {
+  try {
+    const { tempToken, code } = req.body;
+    const user = await verifyTwoFactorCode({ tempToken, code });
+    generateAuthCookie(res, user.id, user.role);
+    return sendSuccess(res, 200, 'Successfully verified and authenticated', {
+      user,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const resendTwoFactor = async (req, res, next) => {
+  try {
+    const { tempToken } = req.body;
+    const result = await resendTwoFactorCode({ tempToken });
+    return sendSuccess(res, 200, 'A new verification code has been sent to your email', result);
   } catch (error) {
     next(error);
   }

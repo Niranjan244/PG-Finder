@@ -49,16 +49,18 @@ export const AppRoutes = () => {
       {/* Standalone Landing Page (includes its own dedicated Figma-style Navbar & Footer) */}
       <Route path="/" element={<HomePage />} />
 
+      {/* Standalone Split-Screen Auth Pages */}
+      <Route
+        path="login"
+        element={
+          <PublicAuthRoute>
+            <LoginPage />
+          </PublicAuthRoute>
+        }
+      />
+
       {/* Main Layout routes (Public & Auth Pages) */}
       <Route element={<MainLayout />}>
-        <Route
-          path="login"
-          element={
-            <PublicAuthRoute>
-              <LoginPage />
-            </PublicAuthRoute>
-          }
-        />
         <Route
           path="register"
           element={

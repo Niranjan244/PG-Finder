@@ -366,3 +366,78 @@ export const sendPaymentRefundEmail = async ({
   }
 };
 
+export const sendTwoFactorVerificationEmail = async ({
+  toEmail,
+  userName,
+  code,
+}) => {
+  const mailTransporter = getMailTransporter();
+
+  const htmlContent = `
+    <!DOCTYPE html>
+    <html lang="en">
+    <head>
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <title>Two-Step Verification - PG Finder</title>
+      <style>
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; background-color: #0b1120; margin: 0; padding: 32px 16px; color: #f8fafc; }
+        .container { max-width: 520px; margin: 0 auto; background: #131d31; border-radius: 16px; border: 1px solid #1e2b42; overflow: hidden; box-shadow: 0 10px 25px rgba(0, 0, 0, 0.4); }
+        .header { background: linear-gradient(135deg, #7c3aed 0%, #4f46e5 100%); padding: 28px 32px; color: #ffffff; text-align: center; }
+        .brand-name { font-size: 22px; font-weight: 800; letter-spacing: -0.5px; margin: 0; }
+        .brand-sub { font-size: 12px; color: #ddd6fe; margin-top: 4px; }
+        .content { padding: 32px; text-align: center; }
+        .greeting { font-size: 18px; font-weight: 700; color: #f8fafc; margin-bottom: 12px; }
+        .paragraph { font-size: 14px; line-height: 1.6; color: #94a3b8; margin-bottom: 24px; }
+        .code-box { background: #1a263e; border: 2px dashed #6366f1; border-radius: 14px; padding: 18px 24px; font-size: 34px; font-weight: 800; letter-spacing: 8px; color: #a5b4fc; margin: 24px auto; display: inline-block; font-family: 'Courier New', Courier, monospace; }
+        .note { font-size: 12px; color: #94a3b8; line-height: 1.5; margin: 20px 0; background: #162136; padding: 12px 16px; border-radius: 8px; text-align: left; }
+        .footer { background: #0f1728; padding: 20px 32px; text-align: center; font-size: 11px; color: #64748b; border-top: 1px solid #1e2b42; }
+      </style>
+    </head>
+    <body>
+      <div class="container">
+        <div class="header">
+          <div class="brand-name">PG FINDER</div>
+          <div class="brand-sub">Two-Step Security Verification</div>
+        </div>
+        <div class="content">
+          <div class="greeting">Hello ${userName || 'Resident'},</div>
+          <p class="paragraph">
+            You are signing in with Google. Use the 6-digit verification code below to verify your identity and access your account:
+          </p>
+          <div class="code-box">${code}</div>
+          <div class="note">
+            ⏱️ This verification code expires in <strong>10 minutes</strong>. If you did not initiate this sign-in request, please secure your Google account immediately.
+          </div>
+        </div>
+        <div class="footer">
+          &copy; ${new Date().getFullYear()} PG Finder Inc. All rights reserved. &bull; Secure Authentication
+        </div>
+      </div>
+    </body>
+    </html>
+  `;
+
+  console.log(`\n========================================`);
+  console.log(`[2FA SECURITY CODE] User: ${toEmail}`);
+  console.log(`[2FA SECURITY CODE] Code: ${code}`);
+  console.log(`========================================\n`);
+
+  try {
+    const info = await mailTransporter.sendMail({
+      from: `"PG Finder Security" <${env.smtpUser}>`,
+      to: toEmail,
+      subject: `${code} is your PG Finder verification code`,
+      text: `Hello ${userName || 'Resident'},\n\nYour 2-step verification code for PG Finder is: ${code}\n\nThis code is valid for 10 minutes.\n\nIf you did not request this, please secure your Google account.`,
+      html: htmlContent,
+    });
+    console.log(`2FA email successfully delivered to ${toEmail} (MessageId: ${info.messageId})`);
+    return { success: true, messageId: info.messageId };
+  } catch (error) {
+    console.warn(`[2FA EMAIL WARNING] Could not send via SMTP to ${toEmail}: ${error.message}`);
+    // Return true with fallback so user can still enter code in dev if needed
+    return { success: true, fallback: true, error: error.message };
+  }
+};
+
+

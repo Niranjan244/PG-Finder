@@ -73,6 +73,14 @@ const userSchema = new mongoose.Schema(
       type: Date,
       select: false,
     },
+    twoFactorCode: {
+      type: String,
+      select: false,
+    },
+    twoFactorExpires: {
+      type: Date,
+      select: false,
+    },
     wishlist: [
       {
         type: mongoose.Schema.Types.ObjectId,

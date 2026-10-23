@@ -7,6 +7,8 @@ import {
   forgotPassword,
   resetPassword,
   firebaseAuth,
+  verifyTwoFactor,
+  resendTwoFactor,
 } from '../controllers/authController.js';
 import { validateRequest } from '../middleware/validateRequest.js';
 import {
@@ -24,6 +26,8 @@ const router = Router();
 router.post('/register', authRateLimiter, validateRequest(registerSchema), register);
 router.post('/login', authRateLimiter, validateRequest(loginSchema), login);
 router.post('/firebase', authRateLimiter, validateRequest(firebaseAuthSchema), firebaseAuth);
+router.post('/verify-2fa', authRateLimiter, verifyTwoFactor);
+router.post('/resend-2fa', authRateLimiter, resendTwoFactor);
 router.post('/logout', logout);
 router.get('/me', authenticateUser, getMe);
 router.post('/forgot-password', authRateLimiter, validateRequest(forgotPasswordSchema), forgotPassword);

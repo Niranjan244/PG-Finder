@@ -2,7 +2,8 @@ import crypto from 'crypto';
 import bcrypt from 'bcryptjs';
 import User from '../models/User.js';
 import { env } from '../config/env.js';
-import { sendPasswordResetEmail } from './emailService.js';
+import { sendPasswordResetEmail, sendTwoFactorVerificationEmail } from './emailService.js';
+import jwt from 'jsonwebtoken';
 import { getFirebaseAdmin } from '../config/firebase.js';
 
 const sanitizeUser = (user) => ({
@@ -239,4 +240,118 @@ export const findOrLinkFirebaseUser = async ({ firebaseUid, email, name, role })
   });
 
   return { user: sanitizeUser(newUser), requiresRole: false };
+};
+
+export const generateAndSendTwoFactorCode = async ({ userId, email, name }) => {
+  const code = Math.floor(100000 + Math.random() * 900000).toString();
+  const expiresAt = new Date(Date.now() + 10 * 60 * 1000); // 10 minutes validity
+
+  await User.findByIdAndUpdate(userId, {
+    twoFactorCode: code,
+    twoFactorExpires: expiresAt,
+  });
+
+  await sendTwoFactorVerificationEmail({
+    toEmail: email,
+    userName: name,
+    code,
+  });
+
+  const tempToken = jwt.sign(
+    { sub: userId.toString(), email, purpose: 'google_2fa' },
+    env.jwtSecret,
+    { expiresIn: '10m' }
+  );
+
+  return { tempToken, email };
+};
+
+export const verifyTwoFactorCode = async ({ tempToken, code }) => {
+  if (!tempToken || !code) {
+    const error = new Error('Verification session token and 6-digit code are required');
+    error.statusCode = 400;
+    throw error;
+  }
+
+  let decoded;
+  try {
+    decoded = jwt.verify(tempToken, env.jwtSecret);
+  } catch (err) {
+    const error = new Error('Verification session has expired or is invalid. Please sign in with Google again.');
+    error.statusCode = 401;
+    throw error;
+  }
+
+  if (decoded.purpose !== 'google_2fa') {
+    const error = new Error('Invalid verification token purpose');
+    error.statusCode = 400;
+    throw error;
+  }
+
+  const user = await User.findById(decoded.sub).select('+twoFactorCode +twoFactorExpires');
+  if (!user) {
+    const error = new Error('User not found');
+    error.statusCode = 404;
+    throw error;
+  }
+
+  if (user.isBlocked) {
+    const error = new Error('Account suspended. Please contact support.');
+    error.statusCode = 403;
+    throw error;
+  }
+
+  if (!user.twoFactorCode || !user.twoFactorExpires) {
+    const error = new Error('No active verification code found. Please request a new code.');
+    error.statusCode = 400;
+    throw error;
+  }
+
+  if (new Date() > new Date(user.twoFactorExpires)) {
+    const error = new Error('Verification code has expired. Please request a new code.');
+    error.statusCode = 400;
+    throw error;
+  }
+
+  if (user.twoFactorCode !== code.trim()) {
+    const error = new Error('Invalid 6-digit verification code. Please check your email.');
+    error.statusCode = 400;
+    throw error;
+  }
+
+  user.twoFactorCode = undefined;
+  user.twoFactorExpires = undefined;
+  await user.save();
+
+  return sanitizeUser(user);
+};
+
+export const resendTwoFactorCode = async ({ tempToken }) => {
+  if (!tempToken) {
+    const error = new Error('Verification session token is required');
+    error.statusCode = 400;
+    throw error;
+  }
+
+  let decoded;
+  try {
+    decoded = jwt.verify(tempToken, env.jwtSecret);
+  } catch (err) {
+    const error = new Error('Verification session expired. Please sign in with Google again.');
+    error.statusCode = 401;
+    throw error;
+  }
+
+  const user = await User.findById(decoded.sub);
+  if (!user) {
+    const error = new Error('User not found');
+    error.statusCode = 404;
+    throw error;
+  }
+
+  return await generateAndSendTwoFactorCode({
+    userId: user._id,
+    email: user.email,
+    name: user.name,
+  });
 };

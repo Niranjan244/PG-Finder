@@ -27,3 +27,11 @@ export const resetPasswordApi = async ({ token, password }) => {
 export const firebaseAuthApi = async ({ idToken, role }) => {
   return await apiClient.post('/auth/firebase', { idToken, role });
 };
+
+export const verifyTwoFactorApi = async ({ tempToken, code }) => {
+  return await apiClient.post('/auth/verify-2fa', { tempToken, code });
+};
+
+export const resendTwoFactorApi = async ({ tempToken }) => {
+  return await apiClient.post('/auth/resend-2fa', { tempToken });
+};
