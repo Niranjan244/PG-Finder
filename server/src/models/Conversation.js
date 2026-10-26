@@ -46,6 +46,15 @@ const conversationSchema = new mongoose.Schema(
         min: 0,
       },
     },
+    isBlocked: {
+      type: Boolean,
+      default: false,
+    },
+    blockedBy: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'User',
+      default: null,
+    },
   },
   {
     timestamps: true,

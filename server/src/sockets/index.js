@@ -16,6 +16,9 @@ export const initializeSocketIO = (httpServer) => {
       origin: allowedOrigins,
       credentials: true,
     },
+    transports: ['websocket', 'polling'],
+    pingInterval: 10000,
+    pingTimeout: 5000,
   });
 
   registerChatSocketHandlers(ioInstance);

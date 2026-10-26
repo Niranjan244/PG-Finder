@@ -1,15 +1,24 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
-import { MessageSquare, Bell, X, ArrowRight } from 'lucide-react';
+import { MessageSquare, Bell, X, ArrowRight, AlertTriangle, CheckCircle2 } from 'lucide-react';
 
 export const ToastContainer = ({ toasts = [], onDismiss }) => {
   const navigate = useNavigate();
 
-  if (!toasts || toasts.length === 0) return null;
+  // Completely exclude chat notifications on both Tenant and Owner sides
+  const filteredToasts = toasts.filter((toast) => {
+    return (
+      toast.type !== 'new_message' &&
+      !toast.conversationId &&
+      !toast.data?.conversationId
+    );
+  });
+
+  if (!filteredToasts || filteredToasts.length === 0) return null;
 
   return (
     <div className="fixed bottom-4 right-4 z-50 flex flex-col gap-2.5 max-w-sm w-full pointer-events-none px-3 sm:px-0">
-      {toasts.map((toast) => {
+      {filteredToasts.map((toast) => {
         const isChat = toast.type === 'new_message' || Boolean(toast.conversationId);
 
         const handleClick = () => {
@@ -33,8 +42,20 @@ export const ToastContainer = ({ toasts = [], onDismiss }) => {
             role="alert"
           >
             <div className="shrink-0 mt-0.5">
-              <div className="flex h-8 w-8 items-center justify-center rounded-full bg-theme-brand-subtle text-theme-brand font-bold text-xs uppercase shadow-2xs">
-                {isChat ? (
+              <div
+                className={`flex h-8 w-8 items-center justify-center rounded-full font-bold text-xs uppercase shadow-2xs ${
+                  toast.type === 'warning'
+                    ? 'bg-amber-500/10 text-amber-500'
+                    : toast.type === 'success'
+                    ? 'bg-emerald-500/10 text-emerald-500'
+                    : 'bg-theme-brand-subtle text-theme-brand'
+                }`}
+              >
+                {toast.type === 'warning' ? (
+                  <AlertTriangle className="h-4 w-4" />
+                ) : toast.type === 'success' ? (
+                  <CheckCircle2 className="h-4 w-4" />
+                ) : isChat ? (
                   <MessageSquare className="h-4 w-4" />
                 ) : (
                   <Bell className="h-4 w-4" />
@@ -53,7 +74,13 @@ export const ToastContainer = ({ toasts = [], onDismiss }) => {
                 {toast.message}
               </p>
               <div className="mt-1.5 flex items-center gap-1 text-[11px] font-semibold text-theme-brand group-hover:underline">
-                <span>{isChat ? 'Open conversation' : 'View details'}</span>
+                <span>
+                  {isChat
+                    ? 'Open conversation'
+                    : toast.type === 'warning'
+                    ? 'Dismiss notice'
+                    : 'View details'}
+                </span>
                 <ArrowRight className="h-3 w-3" />
               </div>
             </div>

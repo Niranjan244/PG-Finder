@@ -2,7 +2,12 @@ import jwt from 'jsonwebtoken';
 import { env } from '../config/env.js';
 import User from '../models/User.js';
 import Conversation from '../models/Conversation.js';
-import { saveChatMessage, markConversationAsRead } from '../services/chatService.js';
+import {
+  saveChatMessage,
+  markConversationAsRead,
+  reactToMessage,
+  deleteMessageForEveryone,
+} from '../services/chatService.js';
 
 export const isReceiverInConversationRoom = (io, conversationId, receiverId) => {
   const conversationRoom = io.sockets?.adapter?.rooms?.get(`conversation_${conversationId}`);
@@ -102,11 +107,11 @@ export const registerChatSocketHandlers = (io) => {
       }
     });
 
-    // Send a message
-    socket.on('send_message', async ({ conversationId, text }, callback) => {
+    // Send a message (text, media, attachments, forwarded)
+    socket.on('send_message', async ({ conversationId, text = '', attachments = [], isForwarded = false }, callback) => {
       try {
-        if (!conversationId || !text || !text.trim()) {
-          if (callback) callback({ success: false, message: 'Valid conversation ID and text required' });
+        if (!conversationId || ((!text || !text.trim()) && (!attachments || attachments.length === 0))) {
+          if (callback) callback({ success: false, message: 'Valid conversation ID and text or attachment required' });
           return;
         }
 
@@ -115,6 +120,8 @@ export const registerChatSocketHandlers = (io) => {
           conversationId,
           senderId: socket.user._id,
           text,
+          attachments,
+          isForwarded,
         });
 
         const roomName = `conversation_${conversationId}`;
@@ -127,17 +134,59 @@ export const registerChatSocketHandlers = (io) => {
         // 1. Emit the new message once to the other participants in the conversation room
         socket.to(roomName).emit('new_message', payload);
 
-        // 2. Send it to the user_<receiverId> room only when the receiver is not already in the conversation room
-        const isReceiverInRoom = isReceiverInConversationRoom(io, conversationId, receiverId);
-        if (!isReceiverInRoom) {
-          io.to(`user_${receiverId.toString()}`).emit('new_message', payload);
-        }
-
+        // 2. Broadcast immediately to the recipient's personal user channel (triggers instant laptop alerts)
+        io.to(`user_${receiverId.toString()}`).emit('new_message', payload);
         io.to(`user_${receiverId.toString()}`).emit('conversation_updated', payload);
 
         if (callback) callback({ success: true, message });
       } catch (err) {
         console.error('send_message socket error:', err.message);
+        if (callback) callback({ success: false, error: err.message });
+      }
+    });
+
+    // React to a message
+    socket.on('react_message', async ({ messageId, emoji }, callback) => {
+      try {
+        if (!messageId || !emoji) {
+          if (callback) callback({ success: false, message: 'Message ID and emoji required' });
+          return;
+        }
+
+        const result = await reactToMessage({
+          messageId,
+          userId: socket.user._id,
+          emoji,
+        });
+
+        io.to(`conversation_${result.conversationId}`).emit('message_reacted', result);
+        io.to(`user_${socket.user._id.toString()}`).emit('message_reacted', result);
+
+        if (callback) callback({ success: true, result });
+      } catch (err) {
+        console.error('react_message socket error:', err.message);
+        if (callback) callback({ success: false, error: err.message });
+      }
+    });
+
+    // Delete message for everyone
+    socket.on('delete_message', async ({ messageId }, callback) => {
+      try {
+        if (!messageId) {
+          if (callback) callback({ success: false, message: 'Message ID required' });
+          return;
+        }
+
+        const result = await deleteMessageForEveryone({
+          messageId,
+          userId: socket.user._id,
+        });
+
+        io.to(`conversation_${result.conversationId}`).emit('message_deleted', result);
+
+        if (callback) callback({ success: true, result });
+      } catch (err) {
+        console.error('delete_message socket error:', err.message);
         if (callback) callback({ success: false, error: err.message });
       }
     });

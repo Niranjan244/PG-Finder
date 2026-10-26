@@ -1,5 +1,51 @@
 import mongoose from 'mongoose';
 
+const attachmentSchema = new mongoose.Schema(
+  {
+    url: {
+      type: String,
+      required: true,
+    },
+    fileType: {
+      type: String,
+      enum: ['image', 'document', 'file'],
+      default: 'file',
+    },
+    originalName: {
+      type: String,
+      default: '',
+    },
+    fileSize: {
+      type: Number,
+      default: 0,
+    },
+    mimeType: {
+      type: String,
+      default: '',
+    },
+  },
+  { _id: false }
+);
+
+const reactionSchema = new mongoose.Schema(
+  {
+    user: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'User',
+      required: true,
+    },
+    emoji: {
+      type: String,
+      required: true,
+    },
+    createdAt: {
+      type: Date,
+      default: Date.now,
+    },
+  },
+  { _id: false }
+);
+
 const messageSchema = new mongoose.Schema(
   {
     conversation: {
@@ -22,11 +68,37 @@ const messageSchema = new mongoose.Schema(
     },
     text: {
       type: String,
-      required: [true, 'Message text cannot be empty'],
       trim: true,
-      minlength: [1, 'Message must contain at least 1 character'],
+      default: '',
       maxlength: [2000, 'Message cannot exceed 2000 characters'],
     },
+    attachments: {
+      type: [attachmentSchema],
+      default: [],
+    },
+    reactions: {
+      type: [reactionSchema],
+      default: [],
+    },
+    isForwarded: {
+      type: Boolean,
+      default: false,
+    },
+    isDeleted: {
+      type: Boolean,
+      default: false,
+      index: true,
+    },
+    deletedAt: {
+      type: Date,
+      default: null,
+    },
+    deletedFor: [
+      {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'User',
+      },
+    ],
     isRead: {
       type: Boolean,
       default: false,
@@ -37,6 +109,18 @@ const messageSchema = new mongoose.Schema(
     timestamps: true,
   }
 );
+
+// Require either text or at least one attachment for non-deleted messages
+messageSchema.pre('validate', function (next) {
+  if (
+    !this.isDeleted &&
+    (!this.text || !this.text.trim()) &&
+    (!this.attachments || this.attachments.length === 0)
+  ) {
+    this.invalidate('text', 'Message must contain either text or an attachment');
+  }
+  next();
+});
 
 messageSchema.index({ conversation: 1, createdAt: 1 });
 messageSchema.index({ receiver: 1, isRead: 1 });

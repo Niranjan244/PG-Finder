@@ -17,7 +17,14 @@ import {
 
 export const NotificationDropdown = () => {
   const { isAuthenticated } = useAuth();
-  const { socket, unreadNotifications, refreshNotificationCount } = useSocket();
+  const {
+    socket,
+    unreadNotifications,
+    refreshNotificationCount,
+    notificationPermission,
+    requestNotificationPermission,
+    testWindowNotification,
+  } = useSocket();
   const navigate = useNavigate();
 
   const [isNotifOpen, setIsNotifOpen] = useState(false);
@@ -117,6 +124,13 @@ export const NotificationDropdown = () => {
     } else if (notif.type === 'new_message') {
       if (notif.data?.conversationId) {
         navigate(`/chat?conversationId=${notif.data.conversationId}`);
+        if (typeof window !== 'undefined') {
+          window.dispatchEvent(
+            new CustomEvent('open_chat_conversation', {
+              detail: { conversationId: notif.data.conversationId, timestamp: Date.now() },
+            })
+          );
+        }
       } else {
         navigate('/chat');
       }
@@ -158,7 +172,7 @@ export const NotificationDropdown = () => {
               <button
                 type="button"
                 onClick={handleMarkAllRead}
-                className="text-[11px] font-semibold text-theme-brand hover:underline transition-colors"
+                className="text-[11px] font-semibold text-theme-brand hover:underline transition-colors cursor-pointer"
               >
                 Mark all read
               </button>
@@ -236,6 +250,54 @@ export const NotificationDropdown = () => {
                   )}
                 </button>
               ))
+            )}
+          </div>
+
+          {/* Footer: Native Window Desktop Notification Status & Quick Action */}
+          <div className="p-2.5 border-t border-theme-border bg-theme-surface-subtle flex items-center justify-between text-[11px] rounded-b-2xl">
+            <div className="flex items-center gap-1.5 text-theme-secondary font-medium">
+              <span
+                className={`h-2 w-2 rounded-full ${
+                  notificationPermission === 'granted'
+                    ? 'bg-emerald-500 animate-pulse'
+                    : notificationPermission === 'denied'
+                    ? 'bg-rose-500'
+                    : 'bg-amber-500'
+                }`}
+              />
+              <span>
+                Desktop Alerts:{' '}
+                {notificationPermission === 'granted'
+                  ? 'Active'
+                  : notificationPermission === 'denied'
+                  ? 'Blocked'
+                  : 'Off'}
+              </span>
+            </div>
+            {notificationPermission === 'granted' ? (
+              <button
+                type="button"
+                onClick={testWindowNotification}
+                className="font-semibold text-emerald-600 dark:text-emerald-400 hover:underline cursor-pointer"
+              >
+                Test Alert
+              </button>
+            ) : notificationPermission === 'denied' ? (
+              <button
+                type="button"
+                onClick={requestNotificationPermission}
+                className="font-semibold text-rose-600 dark:text-rose-400 hover:underline cursor-pointer"
+              >
+                Fix (🔒)
+              </button>
+            ) : (
+              <button
+                type="button"
+                onClick={requestNotificationPermission}
+                className="font-semibold text-theme-brand hover:underline cursor-pointer"
+              >
+                Enable
+              </button>
             )}
           </div>
         </div>
