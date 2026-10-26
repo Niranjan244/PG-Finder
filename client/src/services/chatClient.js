@@ -29,15 +29,17 @@ export const sendMessageApi = async (conversationIdOrData, maybePayload) => {
       text: conversationIdOrData.text || '',
       attachments: conversationIdOrData.attachments || [],
       isForwarded: Boolean(conversationIdOrData.isForwarded),
+      replyTo: conversationIdOrData.replyTo || null,
     };
   } else if (typeof maybePayload === 'object' && maybePayload !== null) {
     payload = {
       text: maybePayload.text || '',
       attachments: maybePayload.attachments || [],
       isForwarded: Boolean(maybePayload.isForwarded),
+      replyTo: maybePayload.replyTo || null,
     };
   } else {
-    payload = { text: maybePayload || '' };
+    payload = { text: maybePayload || '', replyTo: null };
   }
 
   return await apiClient.post(`/chat/conversations/${conversationId}/messages`, payload);

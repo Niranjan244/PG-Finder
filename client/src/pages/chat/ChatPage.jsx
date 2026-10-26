@@ -1,5 +1,5 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { useSearchParams, Link } from 'react-router-dom';
+import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '../../context/AuthContext.jsx';
 import { useSocket } from '../../context/SocketContext.jsx';
@@ -28,36 +28,28 @@ import {
   Search,
   Check,
   CheckCheck,
-  CheckSquare,
   ChevronDown,
-  Bell,
-  BellRing,
-  AlertTriangle,
-  RefreshCw,
-  Info,
-  Paperclip,
   Image as ImageIcon,
   Camera,
   Plus,
   FileText,
-  File,
   Download,
   Folder,
   X,
   MoreVertical,
   Smile,
   Forward,
+  Reply,
   Trash2,
   Ban,
-  FileArchive,
-  FileSpreadsheet,
-  FileCode,
   Eye,
-  Share2,
   HardDrive,
-  Eraser,
   ShieldAlert,
 } from 'lucide-react';
+import { ChatStorageModal } from './components/ChatStorageModal.jsx';
+import { ChatForwardModal } from './components/ChatForwardModal.jsx';
+import { ChatDeleteModal } from './components/ChatDeleteModal.jsx';
+import { ChatMediaDrawer } from './components/ChatMediaDrawer.jsx';
 
 const QUICK_EMOJIS = ['👍', '❤️', '😂', '😮', '😢', '🙏'];
 
@@ -76,6 +68,36 @@ const getSenderId = (entity) => {
     return String(entity._id || entity.id || '');
   }
   return String(entity);
+};
+
+const formatRole = (role) => (role === 'owner' ? 'PG Owner' : role === 'admin' ? 'Admin' : 'Tenant');
+
+const isSameDay = (d1, d2) => {
+  if (!d1 || !d2) return false;
+  const a = new Date(d1);
+  const b = new Date(d2);
+  return (
+    a.getFullYear() === b.getFullYear() &&
+    a.getMonth() === b.getMonth() &&
+    a.getDate() === b.getDate()
+  );
+};
+
+const formatMessageDate = (dateStr) => {
+  if (!dateStr) return '';
+  const d = new Date(dateStr);
+  const today = new Date();
+  const yesterday = new Date();
+  yesterday.setDate(today.getDate() - 1);
+
+  if (isSameDay(d, today)) return 'Today';
+  if (isSameDay(d, yesterday)) return 'Yesterday';
+
+  return d.toLocaleDateString(undefined, {
+    day: 'numeric',
+    month: 'short',
+    year: d.getFullYear() !== today.getFullYear() ? 'numeric' : undefined,
+  });
 };
 
 const renderMessageContent = (text, isMine) => {
@@ -107,15 +129,7 @@ const renderMessageContent = (text, isMine) => {
 export const ChatPage = () => {
   const { user } = useAuth();
   const currentUserId = user?.id || user?._id;
-  const {
-    socket,
-    isConnected,
-    decrementUnreadBy,
-    setActiveChatConversationId,
-    notificationPermission,
-    requestNotificationPermission,
-    testWindowNotification,
-  } = useSocket();
+  const { socket, isConnected, decrementUnreadBy, setActiveChatConversationId } = useSocket();
   const [searchParams] = useSearchParams();
   const queryClient = useQueryClient();
 
@@ -131,23 +145,19 @@ export const ChatPage = () => {
   const [showScrollBottomBtn, setShowScrollBottomBtn] = useState(false);
 
   // WhatsApp Features State
-  const [pendingAttachments, setPendingAttachments] = useState([]); // files selected for sending
+  const [pendingAttachments, setPendingAttachments] = useState([]);
   const [isUploading, setIsUploading] = useState(false);
   const [activeActionMenuMessageId, setActiveActionMenuMessageId] = useState(null);
   const [activeReactionPickerMessageId, setActiveReactionPickerMessageId] = useState(null);
-  const [forwardModalMessage, setForwardModalMessage] = useState(null); // message to forward
+  const [forwardModalMessage, setForwardModalMessage] = useState(null);
   const [selectedForwardTargets, setSelectedForwardTargets] = useState([]);
   const [isForwarding, setIsForwarding] = useState(false);
-  const [showMediaDrawer, setShowMediaDrawer] = useState(false); // Media, Links & Docs drawer
-  const [mediaDrawerTab, setMediaDrawerTab] = useState('media'); // 'media' | 'docs' | 'links'
+  const [showMediaDrawer, setShowMediaDrawer] = useState(false);
+  const [mediaDrawerTab, setMediaDrawerTab] = useState('media');
   const [conversationMediaData, setConversationMediaData] = useState({ media: [], docs: [], links: [] });
   const [isLoadingMedia, setIsLoadingMedia] = useState(false);
-  const [lightboxImage, setLightboxImage] = useState(null); // preview image url
+  const [lightboxImage, setLightboxImage] = useState(null);
   const [showAttachMenu, setShowAttachMenu] = useState(false);
-  const [showCameraModal, setShowCameraModal] = useState(false);
-  const [capturedPhotoUrl, setCapturedPhotoUrl] = useState(null);
-  const [capturedBlob, setCapturedBlob] = useState(null);
-  const [cameraError, setCameraError] = useState('');
 
   // Three-dots menu, in-chat search, storage modal, and block state
   const [showHeaderMenu, setShowHeaderMenu] = useState(false);
@@ -165,24 +175,23 @@ export const ChatPage = () => {
   const [isSelectionMode, setIsSelectionMode] = useState(false);
   const [selectedMessageIds, setSelectedMessageIds] = useState([]);
 
+  // Message Reply state
+  const [replyingToMessage, setReplyingToMessage] = useState(null);
+
   const messagesEndRef = useRef(null);
   const scrollContainerRef = useRef(null);
   const isNearBottomRef = useRef(true);
   const typingTimeoutRef = useRef(null);
   const fileInputRef = useRef(null);
   const imageInputRef = useRef(null);
+  const cameraInputRef = useRef(null);
+  const messageInputRef = useRef(null);
   const attachMenuRef = useRef(null);
   const headerMenuRef = useRef(null);
   const chatSearchInputRef = useRef(null);
-  const videoRef = useRef(null);
-  const mediaStreamRef = useRef(null);
-  const cameraFallbackInputRef = useRef(null);
 
   // Fetch list of conversations
-  const {
-    data: conversationsData,
-    isLoading: isConversationsLoading,
-  } = useQuery({
+  const { data: conversationsData, isLoading: isConversationsLoading } = useQuery({
     queryKey: ['myConversations'],
     queryFn: fetchMyConversationsApi,
     staleTime: 0,
@@ -206,10 +215,9 @@ export const ChatPage = () => {
   }, [conversationIdFromQuery, conversations, activeConversationId]);
 
   const activeConversation =
-    conversations.find((conversation) => conversation._id === activeConversationId) ||
+    conversations.find((c) => c._id === activeConversationId) ||
     (fetchedConversation?._id === activeConversationId ? fetchedConversation : null);
 
-  // Helper to determine counterpart details
   const getCounterpart = useCallback(
     (conv) => {
       if (!conv || !user) return { name: 'User', role: 'user', email: '' };
@@ -223,15 +231,11 @@ export const ChatPage = () => {
 
   const counterpart = getCounterpart(activeConversation);
 
-  // Helper to scroll
   const scrollToBottom = useCallback((behavior = 'smooth') => {
     const container = scrollContainerRef.current;
     if (container) {
       if (behavior === 'smooth') {
-        container.scrollTo({
-          top: container.scrollHeight,
-          behavior: 'smooth',
-        });
+        container.scrollTo({ top: container.scrollHeight, behavior: 'smooth' });
       } else {
         container.scrollTop = container.scrollHeight;
       }
@@ -242,6 +246,7 @@ export const ChatPage = () => {
   // Load message history when active conversation changes
   useEffect(() => {
     if (!activeConversationId) return;
+    setReplyingToMessage(null);
 
     let isMounted = true;
     const loadMessages = async () => {
@@ -254,9 +259,7 @@ export const ChatPage = () => {
             (Array.isArray(response.data) ? response.data : []);
           setMessages(list);
           const conv = response.data?.conversation || response.data?.data?.conversation;
-          if (conv) {
-            setFetchedConversation(conv);
-          }
+          if (conv) setFetchedConversation(conv);
           setTimeout(() => scrollToBottom('auto'), 50);
         }
       } catch (error) {
@@ -303,41 +306,19 @@ export const ChatPage = () => {
     }
   }, [showMediaDrawer, activeConversationId, loadConversationMedia]);
 
-  // Event listener for opening/focusing a conversation from laptop notifications or dropdown
+  // Event listener for opening/focusing conversation from notifications
   useEffect(() => {
     const handleOpenConversation = (e) => {
       const targetId = e?.detail?.conversationId;
       if (targetId) {
         setActiveConversationId(targetId);
         setShowMobileChat(true);
-        fetchConversationMessagesApi(targetId, { _t: Date.now() })
-          .then((response) => {
-            const list =
-              response.data?.messages ||
-              response.data?.data?.messages ||
-              (Array.isArray(response.data) ? response.data : []);
-            setMessages(list);
-            const conv = response.data?.conversation || response.data?.data?.conversation;
-            if (conv) setFetchedConversation(conv);
-            setTimeout(() => scrollToBottom('auto'), 50);
-          })
-          .catch((err) => console.error('Error reloading messages on notification click:', err));
-
-        markConversationReadApi(targetId)
-          .then((response) => {
-            const readCount = response.data?.markedCount || response.data?.data?.markedCount || 0;
-            if (readCount > 0) {
-              decrementUnreadBy(readCount);
-              queryClient.invalidateQueries({ queryKey: ['myConversations'] });
-            }
-          })
-          .catch(() => {});
       }
     };
 
     window.addEventListener('open_chat_conversation', handleOpenConversation);
     return () => window.removeEventListener('open_chat_conversation', handleOpenConversation);
-  }, [decrementUnreadBy, queryClient, scrollToBottom]);
+  }, []);
 
   // Sync latest messages when window/tab is focused
   useEffect(() => {
@@ -364,42 +345,15 @@ export const ChatPage = () => {
 
   // Sync active conversation with SocketContext to suppress popup toasts for current chat
   useEffect(() => {
-    if (activeConversationId) {
+    if (setActiveChatConversationId) {
       setActiveChatConversationId(activeConversationId);
     }
     return () => {
-      setActiveChatConversationId(null);
+      if (setActiveChatConversationId) {
+        setActiveChatConversationId(null);
+      }
     };
   }, [activeConversationId, setActiveChatConversationId]);
-
-  // Date comparison and formatting helpers
-  const isSameDay = (d1, d2) => {
-    if (!d1 || !d2) return false;
-    const a = new Date(d1);
-    const b = new Date(d2);
-    return (
-      a.getFullYear() === b.getFullYear() &&
-      a.getMonth() === b.getMonth() &&
-      a.getDate() === b.getDate()
-    );
-  };
-
-  const formatMessageDate = (dateStr) => {
-    if (!dateStr) return '';
-    const d = new Date(dateStr);
-    const today = new Date();
-    const yesterday = new Date();
-    yesterday.setDate(today.getDate() - 1);
-
-    if (isSameDay(d, today)) return 'Today';
-    if (isSameDay(d, yesterday)) return 'Yesterday';
-
-    return d.toLocaleDateString(undefined, {
-      day: 'numeric',
-      month: 'short',
-      year: d.getFullYear() !== today.getFullYear() ? 'numeric' : undefined,
-    });
-  };
 
   const handleScroll = () => {
     const el = scrollContainerRef.current;
@@ -418,7 +372,7 @@ export const ChatPage = () => {
     scrollToBottom('auto');
   }, [activeConversationId, scrollToBottom]);
 
-  // Join and leave conversation socket rooms, and automatically re-join upon socket reconnect
+  // Join and leave conversation socket rooms
   useEffect(() => {
     if (!socket || !activeConversationId) return;
 
@@ -444,7 +398,7 @@ export const ChatPage = () => {
     }
   }, [messages, typingStatus, scrollToBottom]);
 
-  // Handle incoming real-time socket events (new message, reaction, deletion, read receipt)
+  // Handle incoming real-time socket events
   useEffect(() => {
     if (!socket) return;
 
@@ -607,91 +561,6 @@ export const ChatPage = () => {
     return () => document.removeEventListener('click', handleClickOutside);
   }, []);
 
-  // WhatsApp Camera Capture Methods
-  const startCamera = async () => {
-    setCameraError('');
-    setCapturedPhotoUrl(null);
-    setCapturedBlob(null);
-    try {
-      if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-        throw new Error('Camera stream not supported in this browser environment. You can use your device camera directly.');
-      }
-      const stream = await navigator.mediaDevices.getUserMedia({
-        video: { width: { ideal: 1280 }, height: { ideal: 720 }, facingMode: 'user' },
-        audio: false,
-      });
-      mediaStreamRef.current = stream;
-      if (videoRef.current) {
-        videoRef.current.srcObject = stream;
-      }
-    } catch (err) {
-      console.warn('Camera error:', err);
-      setCameraError(err.message || 'Unable to access camera. Please allow camera permissions.');
-    }
-  };
-
-  const stopCamera = () => {
-    if (mediaStreamRef.current) {
-      mediaStreamRef.current.getTracks().forEach((track) => track.stop());
-      mediaStreamRef.current = null;
-    }
-    if (videoRef.current) {
-      videoRef.current.srcObject = null;
-    }
-  };
-
-  const openCameraModal = () => {
-    setShowCameraModal(true);
-    setTimeout(() => {
-      startCamera();
-    }, 150);
-  };
-
-  const closeCameraModal = () => {
-    stopCamera();
-    setShowCameraModal(false);
-    setCapturedPhotoUrl(null);
-    setCapturedBlob(null);
-    setCameraError('');
-  };
-
-  const takePhotoSnapshot = () => {
-    if (!videoRef.current) return;
-    const video = videoRef.current;
-    const canvas = document.createElement('canvas');
-    canvas.width = video.videoWidth || 640;
-    canvas.height = video.videoHeight || 480;
-    const ctx = canvas.getContext('2d');
-    ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-
-    canvas.toBlob((blob) => {
-      if (blob) {
-        const photoUrl = URL.createObjectURL(blob);
-        setCapturedPhotoUrl(photoUrl);
-        setCapturedBlob(blob);
-        stopCamera();
-      }
-    }, 'image/jpeg', 0.92);
-  };
-
-  const handleAttachCapturedPhoto = () => {
-    if (!capturedBlob || !capturedPhotoUrl) return;
-    const photoFile = new File([capturedBlob], `camera_${Date.now()}.jpg`, {
-      type: 'image/jpeg',
-    });
-    setPendingAttachments((prev) => [
-      ...prev,
-      {
-        file: photoFile,
-        previewUrl: capturedPhotoUrl,
-        name: photoFile.name,
-        size: photoFile.size,
-        type: 'image',
-      },
-    ].slice(0, 5));
-    closeCameraModal();
-  };
-
   const handleInputChange = (event) => {
     setInputText(event.target.value);
     if (!socket || !activeConversationId) return;
@@ -711,24 +580,19 @@ export const ChatPage = () => {
     }, 1500);
   };
 
-  // Handle file selection from local disk
   const handleFileChange = (e) => {
-    const files = Array.from(e.target.files || []);
-    if (files.length === 0) return;
+    const selectedFiles = Array.from(e.target.files || []);
+    if (selectedFiles.length === 0) return;
 
-    const newPending = files.map((file) => {
-      const isImg = file.type.startsWith('image/');
-      return {
-        file,
-        previewUrl: isImg ? URL.createObjectURL(file) : null,
-        name: file.name,
-        size: file.size,
-        type: isImg ? 'image' : 'document',
-      };
-    });
+    const newPending = selectedFiles.map((file) => ({
+      file,
+      previewUrl: file.type.startsWith('image/') ? URL.createObjectURL(file) : null,
+      name: file.name,
+      size: file.size,
+      type: file.type.startsWith('image/') ? 'image' : 'doc',
+    }));
 
     setPendingAttachments((prev) => [...prev, ...newPending].slice(0, 5));
-    // Reset file input so same file can be re-selected if removed
     if (e.target) e.target.value = '';
   };
 
@@ -740,7 +604,6 @@ export const ChatPage = () => {
     });
   };
 
-  // Send message (handles text + attachments)
   const handleSendMessage = async (event) => {
     event.preventDefault();
     const hasText = Boolean(inputText.trim());
@@ -748,7 +611,9 @@ export const ChatPage = () => {
     if ((!hasText && !hasFiles) || isSending || !activeConversationId) return;
 
     const messageText = inputText.trim();
+    const replyTarget = replyingToMessage;
     setInputText('');
+    setReplyingToMessage(null);
     setIsSending(true);
 
     if (socket) {
@@ -761,7 +626,6 @@ export const ChatPage = () => {
     try {
       let uploadedAttachments = [];
 
-      // 1. Upload files first if any
       if (hasFiles) {
         setIsUploading(true);
         const filesToUpload = pendingAttachments.map((p) => p.file);
@@ -771,11 +635,11 @@ export const ChatPage = () => {
         setIsUploading(false);
       }
 
-      // 2. Dispatch via REST API
       const response = await sendMessageApi(activeConversationId, {
         text: messageText,
         attachments: uploadedAttachments,
         isForwarded: false,
+        replyTo: replyTarget?._id || null,
       });
 
       const savedMessage =
@@ -800,13 +664,11 @@ export const ChatPage = () => {
     }
   };
 
-  // WhatsApp Feature: Reaction Toggle
   const handleToggleReaction = async (messageId, emoji) => {
     if (!messageId || !emoji) return;
     setActiveReactionPickerMessageId(null);
     setActiveActionMenuMessageId(null);
 
-    // Optimistic UI update
     setMessages((prev) =>
       prev.map((msg) => {
         if (msg._id !== messageId) return msg;
@@ -839,7 +701,6 @@ export const ChatPage = () => {
     }
   };
 
-  // WhatsApp Feature: Delete Message Modal & Execution
   const openDeleteModal = (msg) => {
     setActiveActionMenuMessageId(null);
     setDeleteModalMessage(msg);
@@ -849,7 +710,6 @@ export const ChatPage = () => {
     if (!messageId || isDeletingMessage) return;
     setIsDeletingMessage(true);
 
-    // Optimistic UI update
     if (deleteFor === 'everyone') {
       setMessages((prev) =>
         prev.map((msg) =>
@@ -865,7 +725,6 @@ export const ChatPage = () => {
         )
       );
     } else {
-      // Delete for me
       setMessages((prev) => prev.filter((msg) => msg._id !== messageId));
     }
 
@@ -894,7 +753,6 @@ export const ChatPage = () => {
     }
   };
 
-  // Multiple messages batch delete
   const handleBatchDeleteSelected = async () => {
     if (selectedMessageIds.length === 0 || isDeletingMessage) return;
     if (!window.confirm(`Delete ${selectedMessageIds.length} selected message(s)?`)) return;
@@ -902,7 +760,6 @@ export const ChatPage = () => {
     setIsDeletingMessage(true);
     const toDeleteIds = [...selectedMessageIds];
 
-    // Optimistically remove from view
     setMessages((prev) => prev.filter((msg) => !toDeleteIds.includes(msg._id)));
     setSelectedMessageIds([]);
     setIsSelectionMode(false);
@@ -918,7 +775,6 @@ export const ChatPage = () => {
     }
   };
 
-  // WhatsApp Feature: Forward Modal & Execution
   const openForwardModal = (msg) => {
     setActiveActionMenuMessageId(null);
     setForwardModalMessage(msg);
@@ -934,7 +790,6 @@ export const ChatPage = () => {
       setForwardModalMessage(null);
       setSelectedForwardTargets([]);
       queryClient.invalidateQueries({ queryKey: ['myConversations'] });
-      // If forwarded to the current active chat, refresh messages
       if (selectedForwardTargets.includes(activeConversationId)) {
         const res = await fetchConversationMessagesApi(activeConversationId);
         setMessages(res.data?.messages || res.data?.data?.messages || []);
@@ -946,6 +801,24 @@ export const ChatPage = () => {
     } finally {
       setIsForwarding(false);
     }
+  };
+
+  const handleScrollToQuotedMessage = (targetMessageId) => {
+    if (!targetMessageId) return;
+    const element = document.getElementById(`msg-${targetMessageId}`);
+    if (element) {
+      element.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      element.classList.add('ring-2', 'ring-theme-brand', 'bg-theme-brand/10', 'transition-all');
+      setTimeout(() => {
+        element.classList.remove('ring-2', 'ring-theme-brand', 'bg-theme-brand/10');
+      }, 1600);
+    }
+  };
+
+  const getQuotedMessageDetails = (replyTo) => {
+    if (!replyTo) return null;
+    if (typeof replyTo === 'object' && replyTo._id) return replyTo;
+    return messages.find((m) => m._id === replyTo) || null;
   };
 
   const handleOpenChatSearch = () => {
@@ -1027,7 +900,7 @@ export const ChatPage = () => {
     }
   };
 
-  const matchingMessageIds = React.useMemo(() => {
+  const matchingMessageIds = useMemo(() => {
     if (!chatSearchQuery.trim()) return new Set();
     const q = chatSearchQuery.toLowerCase();
     const ids = new Set();
@@ -1063,46 +936,11 @@ export const ChatPage = () => {
 
   return (
     <div className="flex flex-col h-[calc(100vh-140px)] min-h-[500px]">
-      {/* Banner if notification permission is blocked in browser settings */}
-      {notificationPermission === 'denied' && (
-        <div className="mb-3 shrink-0 rounded-xl border border-rose-500/30 bg-rose-500/10 p-3.5 text-xs flex flex-col md:flex-row md:items-center justify-between gap-3 shadow-xs animate-in fade-in duration-200">
-          <div className="flex items-start gap-2.5 text-rose-700 dark:text-rose-300">
-            <AlertTriangle className="h-4 w-4 shrink-0 mt-0.5 text-rose-500" />
-            <div>
-              <p className="font-bold text-rose-600 dark:text-rose-400">
-                Desktop Notifications are Blocked in your Browser
-              </p>
-              <p className="text-[11px] text-theme-secondary mt-0.5 leading-relaxed">
-                Click the <strong className="text-theme-primary">🔒 lock icon</strong> in your browser address bar next to <code className="px-1 py-0.5 rounded bg-theme-surface border border-theme-border font-mono text-[10px]">localhost:5173</code>, set <strong className="text-theme-primary">Notifications</strong> to <strong className="text-emerald-600 dark:text-emerald-400">Allow</strong>, then reload.
-              </p>
-            </div>
-          </div>
-          <div className="flex items-center gap-2 shrink-0">
-            <button
-              type="button"
-              onClick={() => window.location.reload()}
-              className="inline-flex items-center justify-center gap-1.5 rounded-lg bg-rose-600 hover:bg-rose-700 px-3 py-1.5 text-xs font-semibold text-white shadow-xs transition-colors cursor-pointer"
-            >
-              <RefreshCw className="h-3.5 w-3.5" />
-              <span>Reload Page</span>
-            </button>
-            <button
-              type="button"
-              onClick={testWindowNotification}
-              className="inline-flex items-center justify-center gap-1.5 rounded-lg border border-theme-border bg-theme-surface hover:bg-theme-surface-hover px-3 py-1.5 text-xs font-semibold text-theme-secondary hover:text-theme-primary transition-colors cursor-pointer"
-            >
-              <Bell className="h-3.5 w-3.5 text-theme-brand" />
-              <span>Test Laptop Alert</span>
-            </button>
-          </div>
-        </div>
-      )}
-
       {/* Main Container */}
       <div className="flex-1 flex overflow-hidden rounded-2xl border border-theme-border bg-theme-surface shadow-xs">
         {/* Left Pane: Conversation Threads */}
         <div
-          className={`w-full md:w-80 lg:w-96 flex flex-col border-r border-theme-border bg-theme-surface-subtle shrink-0 ${
+          className={`w-full md:w-80 lg:w-96 border-r border-theme-border flex flex-col bg-theme-surface shrink-0 ${
             showMobileChat ? 'hidden md:flex' : 'flex'
           }`}
         >
@@ -1110,24 +948,13 @@ export const ChatPage = () => {
           <div className="p-4 border-b border-theme-border bg-theme-surface shrink-0">
             <div className="flex items-center justify-between">
               <h1 className="text-sm font-bold text-theme-primary">Direct Messages</h1>
-              <div className="flex items-center gap-2">
-                <button
-                  type="button"
-                  onClick={testWindowNotification}
-                  title={notificationPermission === 'granted' ? 'Window alerts active (click to test)' : 'Click to enable window alerts'}
-                  className="rounded-lg p-1 text-theme-muted hover:text-theme-primary hover:bg-theme-surface-hover transition-colors cursor-pointer"
-                >
-                  <Bell className={`h-3.5 w-3.5 ${notificationPermission === 'granted' ? 'text-emerald-500' : 'text-amber-500'}`} />
-                </button>
-                <span className="text-[11px] font-semibold text-theme-muted">
-                  {conversations.length} Active
-                </span>
-              </div>
+              <span className="text-[11px] font-semibold text-theme-muted">
+                {conversations.length} Active
+              </span>
             </div>
-
             {/* Search Input */}
-            <div className="relative mt-3">
-              <Search className="absolute left-3 top-2.5 h-3.5 w-3.5 text-theme-muted" />
+            <div className="mt-3 relative">
+              <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-theme-muted" />
               <input
                 type="text"
                 value={filterSearch}
@@ -1225,174 +1052,134 @@ export const ChatPage = () => {
           {activeConversation ? (
             <div className="flex-1 flex overflow-hidden relative">
               {/* Main Chat Stream Container */}
-              <div className="flex-1 min-w-0 flex flex-col">
+              <div className="flex-1 flex flex-col min-w-0 relative">
                 {/* Chat Header */}
-                <div className="p-3 sm:p-4 border-b border-theme-border flex items-center justify-between bg-theme-surface z-10 shadow-2xs shrink-0">
+                <div className="p-3.5 border-b border-theme-border bg-theme-surface flex items-center justify-between gap-3 shrink-0">
                   <div className="flex items-center gap-3 min-w-0">
                     <button
                       type="button"
                       onClick={() => setShowMobileChat(false)}
-                      className="md:hidden rounded-lg p-1 text-theme-muted hover:text-theme-primary hover:bg-theme-surface-hover"
+                      className="md:hidden p-1.5 rounded-lg text-theme-muted hover:text-theme-primary hover:bg-theme-surface-hover"
                     >
-                      <ArrowLeft className="h-5 w-5" />
+                      <ArrowLeft className="h-4 w-4" />
                     </button>
 
                     {/* Counterpart info: Clickable to open Media, Links & Docs drawer */}
                     <div
                       onClick={() => setShowMediaDrawer((prev) => !prev)}
-                      className="flex items-center gap-3 min-w-0 cursor-pointer group select-none"
-                      title="Click name to view Media, Links & Docs"
+                      className="flex items-center gap-2.5 min-w-0 cursor-pointer group/header"
+                      title="Click to view Media, Links & Docs"
                     >
-                      <div className="flex h-9 w-9 items-center justify-center rounded-full bg-theme-brand-subtle text-theme-brand font-bold text-xs uppercase shrink-0 group-hover:scale-105 transition-transform">
+                      <div className="flex h-9 w-9 items-center justify-center rounded-full bg-theme-brand text-white font-bold text-xs uppercase shrink-0 transition-transform group-hover/header:scale-105">
                         {counterpart?.name?.[0] || 'U'}
                       </div>
-
                       <div className="min-w-0">
-                        <div className="flex items-center gap-2">
-                          <h2 className="text-xs font-bold text-theme-primary truncate group-hover:text-theme-brand transition-colors">
+                        <div className="flex items-center gap-1.5">
+                          <h2 className="text-xs font-bold text-theme-primary truncate group-hover/header:text-theme-brand transition-colors">
                             {counterpart?.name || 'User'}
                           </h2>
-                          <span className="rounded-full bg-theme-surface-hover border border-theme-border px-2 py-0.5 text-[10px] font-semibold text-theme-secondary uppercase shrink-0">
-                            {counterpart?.role || 'User'}
+                          <span className="text-[9px] uppercase font-semibold px-1.5 py-0.2 rounded bg-theme-brand-subtle text-theme-brand border border-theme-brand/20">
+                            {formatRole(counterpart?.role)}
                           </span>
                         </div>
-                        <div className="flex items-center gap-1.5 text-[11px] text-theme-muted truncate">
-                          <Building2 className="h-3 w-3 text-theme-muted shrink-0" />
-                          <span className="truncate max-w-xs">{activeConversation.pg?.title}</span>
-                        </div>
+                        <p className="text-[11px] text-theme-muted truncate">
+                          {activeConversation.pg?.title || 'Accommodation'} • {activeConversation.pg?.city || ''}
+                        </p>
                       </div>
                     </div>
                   </div>
 
-                  <div className="flex items-center gap-1.5 shrink-0">
-                    {activeConversation.pg?._id && (
-                      <Link
-                        to={`/pg/${activeConversation.pg._id}`}
-                        target="_blank"
-                        className="hidden lg:inline-flex items-center gap-1 rounded-lg border border-theme-border bg-theme-surface px-2.5 py-1 text-[11px] font-semibold text-theme-secondary hover:bg-theme-surface-hover hover:text-theme-primary transition-colors"
-                      >
-                        <span>View PG</span>
-                        <ExternalLink className="h-3 w-3" />
-                      </Link>
+                  {/* Header Actions: Three-dots menu */}
+                  <div className="flex items-center gap-1 relative" ref={headerMenuRef}>
+                    <button
+                      type="button"
+                      onClick={() => setShowHeaderMenu((prev) => !prev)}
+                      className="p-1.5 rounded-lg text-theme-muted hover:text-theme-primary hover:bg-theme-surface-hover transition-colors cursor-pointer"
+                      title="Chat Options"
+                    >
+                      <MoreVertical className="h-4 w-4" />
+                    </button>
+
+                    {showHeaderMenu && (
+                      <div className="absolute right-0 top-full mt-1 w-52 rounded-2xl border border-theme-border bg-theme-surface py-1.5 shadow-2xl z-30 text-xs animate-in zoom-in-95 duration-100 flex flex-col">
+                        <button
+                          type="button"
+                          onClick={handleOpenChatSearch}
+                          className="w-full px-3.5 py-2 text-left flex items-center gap-2.5 text-theme-secondary hover:text-theme-primary hover:bg-theme-surface-hover transition-colors cursor-pointer"
+                        >
+                          <Search className="h-3.5 w-3.5 text-theme-muted" />
+                          <span>Search in chat</span>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setShowHeaderMenu(false);
+                            setShowMediaDrawer(true);
+                          }}
+                          className="w-full px-3.5 py-2 text-left flex items-center gap-2.5 text-theme-secondary hover:text-theme-primary hover:bg-theme-surface-hover transition-colors cursor-pointer"
+                        >
+                          <Folder className="h-3.5 w-3.5 text-theme-muted" />
+                          <span>Media, Links & Docs</span>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={handleOpenStorageModal}
+                          className="w-full px-3.5 py-2 text-left flex items-center gap-2.5 text-theme-secondary hover:text-theme-primary hover:bg-theme-surface-hover transition-colors cursor-pointer"
+                        >
+                          <HardDrive className="h-3.5 w-3.5 text-theme-muted" />
+                          <span>Storage usage</span>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setShowHeaderMenu(false);
+                            setIsSelectionMode((prev) => !prev);
+                            setSelectedMessageIds([]);
+                          }}
+                          className="w-full px-3.5 py-2 text-left flex items-center gap-2.5 text-theme-secondary hover:text-theme-primary hover:bg-theme-surface-hover transition-colors cursor-pointer"
+                        >
+                          <Trash2 className="h-3.5 w-3.5 text-theme-muted" />
+                          <span>{isSelectionMode ? 'Cancel selection' : 'Delete messages'}</span>
+                        </button>
+                        <div className="my-1 border-t border-theme-border" />
+                        <button
+                          type="button"
+                          onClick={handleClearChat}
+                          disabled={isClearingChat}
+                          className="w-full px-3.5 py-2 text-left flex items-center gap-2.5 text-rose-600 dark:text-rose-400 hover:bg-rose-500/10 transition-colors cursor-pointer"
+                        >
+                          <Ban className="h-3.5 w-3.5" />
+                          <span>Clear chat history</span>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={handleToggleBlock}
+                          disabled={isTogglingBlock}
+                          className="w-full px-3.5 py-2 text-left flex items-center gap-2.5 text-rose-600 dark:text-rose-400 hover:bg-rose-500/10 transition-colors cursor-pointer"
+                        >
+                          <ShieldAlert className="h-3.5 w-3.5" />
+                          <span>{activeConversation.isBlocked ? 'Unblock user' : 'Block user'}</span>
+                        </button>
+                      </div>
                     )}
-
-                    {/* Three Dots Menu Button & Dropdown */}
-                    <div className="relative" ref={headerMenuRef}>
-                      <button
-                        type="button"
-                        onClick={() => setShowHeaderMenu((prev) => !prev)}
-                        className={`rounded-lg p-2 transition-colors cursor-pointer ${
-                          showHeaderMenu
-                            ? 'bg-theme-surface-hover text-theme-primary'
-                            : 'text-theme-muted hover:text-theme-primary hover:bg-theme-surface-hover'
-                        }`}
-                        title="More options"
-                      >
-                        <MoreVertical className="h-4.5 w-4.5" />
-                      </button>
-
-                      {showHeaderMenu && (
-                        <div className="absolute right-0 top-full mt-1.5 w-52 rounded-xl border border-theme-border bg-theme-surface shadow-xl py-1.5 z-50 text-xs animate-in fade-in zoom-in-95 duration-100">
-                          {/* 1. Chat Search */}
-                          <button
-                            type="button"
-                            onClick={handleOpenChatSearch}
-                            className="w-full px-3 py-2 text-left flex items-center gap-2.5 text-theme-secondary hover:text-theme-primary hover:bg-theme-surface-hover transition-colors cursor-pointer"
-                          >
-                            <Search className="h-4 w-4 text-theme-muted" />
-                            <span>Chat search</span>
-                          </button>
-
-                          {/* 2. Media, Links & Docs */}
-                          <button
-                            type="button"
-                            onClick={() => {
-                              setShowHeaderMenu(false);
-                              setShowMediaDrawer(true);
-                            }}
-                            className="w-full px-3 py-2 text-left flex items-center gap-2.5 text-theme-secondary hover:text-theme-primary hover:bg-theme-surface-hover transition-colors cursor-pointer"
-                          >
-                            <Folder className="h-4 w-4 text-theme-muted" />
-                            <span>Media, links and docs</span>
-                          </button>
-
-                          {/* 3. Storage */}
-                          <button
-                            type="button"
-                            onClick={handleOpenStorageModal}
-                            className="w-full px-3 py-2 text-left flex items-center gap-2.5 text-theme-secondary hover:text-theme-primary hover:bg-theme-surface-hover transition-colors cursor-pointer"
-                          >
-                            <HardDrive className="h-4 w-4 text-theme-muted" />
-                            <span>Storage</span>
-                          </button>
-
-                          {/* 4. Delete Messages (Selection mode) */}
-                          <button
-                            type="button"
-                            onClick={() => {
-                              setShowHeaderMenu(false);
-                              setIsSelectionMode(true);
-                              setSelectedMessageIds([]);
-                            }}
-                            className="w-full px-3 py-2 text-left flex items-center gap-2.5 text-theme-secondary hover:text-theme-primary hover:bg-theme-surface-hover transition-colors cursor-pointer"
-                          >
-                            <Trash2 className="h-4 w-4 text-theme-muted" />
-                            <span>Delete messages</span>
-                          </button>
-
-                          <div className="my-1 border-t border-theme-border" />
-
-                          {/* 5. Clear Chat */}
-                          <button
-                            type="button"
-                            onClick={handleClearChat}
-                            disabled={isClearingChat}
-                            className="w-full px-3 py-2 text-left flex items-center gap-2.5 text-rose-600 dark:text-rose-400 hover:bg-rose-500/10 transition-colors cursor-pointer"
-                          >
-                            <Eraser className="h-4 w-4" />
-                            <span>Clear chat</span>
-                          </button>
-
-                          {/* 6. Block / Unblock User */}
-                          <button
-                            type="button"
-                            onClick={handleToggleBlock}
-                            disabled={isTogglingBlock}
-                            className="w-full px-3 py-2 text-left flex items-center gap-2.5 text-rose-600 dark:text-rose-400 hover:bg-rose-500/10 transition-colors cursor-pointer"
-                          >
-                            {activeConversation.isBlocked ? (
-                              <>
-                                <Check className="h-4 w-4" />
-                                <span>Unblock user</span>
-                              </>
-                            ) : (
-                              <>
-                                <Ban className="h-4 w-4" />
-                                <span>Block</span>
-                              </>
-                            )}
-                          </button>
-                        </div>
-                      )}
-                    </div>
                   </div>
                 </div>
 
                 {/* In-Chat Search Bar when active */}
                 {showChatSearch && (
-                  <div className="px-4 py-2 bg-theme-surface-subtle border-b border-theme-border flex items-center gap-2 animate-in slide-in-from-top-2 duration-150 shrink-0">
-                    <Search className="h-4 w-4 text-theme-muted shrink-0" />
+                  <div className="px-3.5 py-2 bg-theme-surface-subtle border-b border-theme-border flex items-center gap-2 shrink-0 animate-in slide-in-from-top-1 duration-150">
+                    <Search className="h-3.5 w-3.5 text-theme-muted shrink-0" />
                     <input
                       ref={chatSearchInputRef}
                       type="text"
                       value={chatSearchQuery}
                       onChange={(e) => setChatSearchQuery(e.target.value)}
-                      placeholder="Search messages in this chat..."
+                      placeholder="Search messages, documents, or photos..."
                       className="flex-1 bg-transparent text-xs text-theme-primary placeholder-theme-muted focus:outline-none"
                     />
                     {chatSearchQuery && (
-                      <span className="text-[11px] font-medium text-theme-muted px-2">
-                        {matchingMessageIds.size} {matchingMessageIds.size === 1 ? 'match' : 'matches'}
+                      <span className="text-[10px] text-theme-muted px-1.5 py-0.5 rounded bg-theme-surface border border-theme-border font-medium shrink-0">
+                        {matchingMessageIds.size} match{matchingMessageIds.size === 1 ? '' : 'es'}
                       </span>
                     )}
                     <button
@@ -1401,42 +1188,38 @@ export const ChatPage = () => {
                         setShowChatSearch(false);
                         setChatSearchQuery('');
                       }}
-                      className="p-1 rounded-md text-theme-muted hover:text-theme-primary hover:bg-theme-surface cursor-pointer"
-                      title="Close search"
+                      className="p-1 rounded-md text-theme-muted hover:text-theme-primary hover:bg-theme-surface-hover"
                     >
-                      <X className="h-4 w-4" />
+                      <X className="h-3.5 w-3.5" />
                     </button>
                   </div>
                 )}
 
                 {/* Message Selection Action Bar (for batch message deletion) */}
                 {isSelectionMode && (
-                  <div className="px-4 py-2.5 bg-theme-surface-subtle border-b border-theme-border flex items-center justify-between text-xs animate-in slide-in-from-top-2 duration-150 shrink-0">
-                    <div className="flex items-center gap-2 font-bold text-theme-primary">
-                      <CheckSquare className="h-4 w-4 text-theme-brand" />
-                      <span>
-                        {selectedMessageIds.length} message{selectedMessageIds.length === 1 ? '' : 's'} selected
-                      </span>
-                    </div>
+                  <div className="px-4 py-2 bg-theme-brand-subtle border-b border-theme-brand/20 flex items-center justify-between text-xs shrink-0 animate-in slide-in-from-top-1 duration-150">
+                    <span className="font-bold text-theme-brand">
+                      {selectedMessageIds.length} message{selectedMessageIds.length === 1 ? '' : 's'} selected
+                    </span>
                     <div className="flex items-center gap-2">
-                      <button
-                        type="button"
-                        disabled={selectedMessageIds.length === 0 || isDeletingMessage}
-                        onClick={handleBatchDeleteSelected}
-                        className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-rose-600 hover:bg-rose-700 text-white font-semibold transition-colors disabled:opacity-40 cursor-pointer shadow-2xs"
-                      >
-                        <Trash2 className="h-3.5 w-3.5" />
-                        <span>Delete ({selectedMessageIds.length})</span>
-                      </button>
                       <button
                         type="button"
                         onClick={() => {
                           setIsSelectionMode(false);
                           setSelectedMessageIds([]);
                         }}
-                        className="px-2.5 py-1.5 rounded-lg border border-theme-border bg-theme-surface text-theme-secondary hover:bg-theme-surface-hover cursor-pointer font-medium"
+                        className="px-2.5 py-1 rounded-lg text-theme-secondary hover:text-theme-primary text-xs font-semibold"
                       >
                         Cancel
+                      </button>
+                      <button
+                        type="button"
+                        disabled={selectedMessageIds.length === 0 || isDeletingMessage}
+                        onClick={handleBatchDeleteSelected}
+                        className="px-3 py-1 rounded-lg bg-rose-600 hover:bg-rose-700 text-white font-bold text-xs shadow-xs disabled:opacity-40 transition-colors cursor-pointer flex items-center gap-1.5"
+                      >
+                        <Trash2 className="h-3.5 w-3.5" />
+                        <span>Delete ({selectedMessageIds.length})</span>
                       </button>
                     </div>
                   </div>
@@ -1463,60 +1246,19 @@ export const ChatPage = () => {
                     messages.map((msg, index) => {
                       const senderIdStr = getSenderId(msg.sender);
                       const myUserIdStr = getSenderId(user?.id || user?._id || currentUserId);
-
-                      let isMine = Boolean(senderIdStr && myUserIdStr && senderIdStr === myUserIdStr);
-
-                      if (!isMine && activeConversation) {
-                        const tenantIdStr = getSenderId(activeConversation.tenant);
-                        const ownerIdStr = getSenderId(activeConversation.owner);
-
-                        if (myUserIdStr && tenantIdStr && myUserIdStr === tenantIdStr && senderIdStr === tenantIdStr) {
-                          isMine = true;
-                        } else if (myUserIdStr && ownerIdStr && myUserIdStr === ownerIdStr && senderIdStr === ownerIdStr) {
-                          isMine = true;
-                        }
-                      }
-
-                      if (!isMine && user?.role && msg.sender?.role) {
-                        if (user.role === 'tenant' && msg.sender.role === 'tenant') {
-                          isMine = true;
-                        } else if (user.role === 'owner' && msg.sender.role === 'owner') {
-                          isMine = true;
-                        }
-                      }
+                      const isMine = Boolean(
+                        (senderIdStr && myUserIdStr && senderIdStr === myUserIdStr) ||
+                        (user?.role && msg.sender?.role && user.role === msg.sender.role)
+                      );
 
                       const prevMsg = index > 0 ? messages[index - 1] : null;
-
-                      const showDateSeparator =
-                        !prevMsg || !isSameDay(msg.createdAt, prevMsg.createdAt);
-                      const dateLabel = showDateSeparator
-                        ? formatMessageDate(msg.createdAt)
-                        : null;
-
+                      const showDateSeparator = !prevMsg || !isSameDay(msg.createdAt, prevMsg.createdAt);
+                      const dateLabel = showDateSeparator ? formatMessageDate(msg.createdAt) : null;
                       const prevSenderIdStr = prevMsg ? getSenderId(prevMsg.sender) : '';
-                      const isConsecutive =
-                        !showDateSeparator &&
-                        prevMsg &&
-                        prevSenderIdStr === senderIdStr;
+                      const isConsecutive = !showDateSeparator && prevMsg && prevSenderIdStr === senderIdStr;
 
-                      const counterpartName = msg.sender?.name || counterpart?.name || 'User';
-                      const rawCounterpartRole = msg.sender?.role || counterpart?.role || 'user';
-                      const counterpartRoleLabel =
-                        rawCounterpartRole === 'owner'
-                          ? 'PG Owner'
-                          : rawCounterpartRole === 'admin'
-                          ? 'Admin'
-                          : 'Tenant';
-
-                      const myRoleLabel =
-                        user?.role === 'owner'
-                          ? 'PG Owner'
-                          : user?.role === 'admin'
-                          ? 'Admin'
-                          : 'Tenant';
-
-                      const senderName = isMine ? 'You' : counterpartName;
-                      const senderRole = isMine ? myRoleLabel : counterpartRoleLabel;
+                      const senderName = isMine ? 'You' : msg.sender?.name || counterpart?.name || 'User';
+                      const senderRole = isMine ? formatRole(user?.role) : formatRole(msg.sender?.role || counterpart?.role);
 
                       const formattedTime = new Date(msg.createdAt).toLocaleTimeString([], {
                         hour: '2-digit',
@@ -1525,7 +1267,6 @@ export const ChatPage = () => {
 
                       const isSearchMatch = chatSearchQuery.trim() && matchingMessageIds.has(msg._id);
 
-                      // Group reactions
                       const reactionsList = Array.isArray(msg.reactions) ? msg.reactions : [];
                       const reactionCounts = reactionsList.reduce((acc, r) => {
                         acc[r.emoji] = (acc[r.emoji] || 0) + 1;
@@ -1546,6 +1287,7 @@ export const ChatPage = () => {
                           )}
 
                           <div
+                            id={`msg-${msg._id}`}
                             className={`w-full flex items-center ${
                               isMine ? 'justify-end' : 'justify-start'
                             } ${isConsecutive ? 'mt-1.5' : 'mt-3.5'} group`}
@@ -1578,7 +1320,6 @@ export const ChatPage = () => {
                                 isMine ? 'items-end' : 'items-start'
                               } max-w-[85%] sm:max-w-[75%] relative`}
                             >
-                              {/* Sender name label on consecutive breaks */}
                               {!isConsecutive && (
                                 <div
                                   className={`flex items-center gap-1.5 mb-1 px-1 ${
@@ -1600,13 +1341,26 @@ export const ChatPage = () => {
 
                               {/* Message bubble wrapper with hover actions */}
                               <div className="relative group/bubble flex items-center">
-                                {/* WhatsApp Hover Actions (Left for mine, Right for counterpart) */}
                                 {!msg.isDeleted && (
                                   <div
                                     className={`absolute top-1/2 -translate-y-1/2 flex items-center gap-1 opacity-0 group-hover/bubble:opacity-100 transition-opacity z-20 ${
-                                      isMine ? '-left-20' : '-right-20'
+                                      isMine ? '-left-32' : '-right-32'
                                     }`}
                                   >
+                                    {/* Reply Button */}
+                                    <button
+                                      type="button"
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        setReplyingToMessage(msg);
+                                        messageInputRef.current?.focus();
+                                      }}
+                                      className="h-7 w-7 rounded-full bg-theme-surface border border-theme-border shadow-md flex items-center justify-center text-theme-muted hover:text-theme-primary hover:bg-theme-surface-hover transition-colors cursor-pointer"
+                                      title="Reply"
+                                    >
+                                      <Reply className="h-3.5 w-3.5" />
+                                    </button>
+
                                     {/* Reaction Trigger Button */}
                                     <button
                                       type="button"
@@ -1636,7 +1390,7 @@ export const ChatPage = () => {
                                       <Forward className="h-3.5 w-3.5" />
                                     </button>
 
-                                    {/* Delete Button (opens delete modal) */}
+                                    {/* Delete Button */}
                                     <button
                                       type="button"
                                       onClick={(e) => {
@@ -1686,7 +1440,7 @@ export const ChatPage = () => {
                                       : 'bg-theme-surface border border-theme-border text-theme-primary rounded-tl-xs px-3.5 py-2.5'
                                   }`}
                                 >
-                                  {/* WhatsApp Message Bubble Header with Chevron Dropdown */}
+                                  {/* Chevron Dropdown */}
                                   {!msg.isDeleted && (
                                     <div className="absolute top-1.5 right-1.5 opacity-0 group-hover/bubble:opacity-100 transition-opacity z-10">
                                       <button
@@ -1708,12 +1462,23 @@ export const ChatPage = () => {
                                         <ChevronDown className="h-3.5 w-3.5" />
                                       </button>
 
-                                      {/* Message Action Dropdown */}
                                       {activeActionMenuMessageId === msg._id && (
                                         <div
                                           onClick={(e) => e.stopPropagation()}
                                           className="absolute right-0 top-full mt-1 w-36 rounded-xl border border-theme-border bg-theme-surface shadow-xl py-1 z-40 text-xs animate-in zoom-in-95 duration-100"
                                         >
+                                          <button
+                                            type="button"
+                                            onClick={() => {
+                                              setActiveActionMenuMessageId(null);
+                                              setReplyingToMessage(msg);
+                                              messageInputRef.current?.focus();
+                                            }}
+                                            className="w-full px-3 py-1.5 text-left flex items-center gap-2 text-theme-secondary hover:text-theme-primary hover:bg-theme-surface-hover transition-colors cursor-pointer"
+                                          >
+                                            <Reply className="h-3.5 w-3.5 text-theme-muted" />
+                                            <span>Reply</span>
+                                          </button>
                                           <button
                                             type="button"
                                             onClick={() => {
@@ -1725,7 +1490,6 @@ export const ChatPage = () => {
                                             <Smile className="h-3.5 w-3.5 text-theme-muted" />
                                             <span>React</span>
                                           </button>
-
                                           <button
                                             type="button"
                                             onClick={() => {
@@ -1736,7 +1500,6 @@ export const ChatPage = () => {
                                             <Forward className="h-3.5 w-3.5 text-theme-muted" />
                                             <span>Forward</span>
                                           </button>
-
                                           <button
                                             type="button"
                                             onClick={() => {
@@ -1751,7 +1514,8 @@ export const ChatPage = () => {
                                       )}
                                     </div>
                                   )}
-                                  {/* WhatsApp Forwarded Badge */}
+
+                                  {/* Forwarded Badge */}
                                   {msg.isForwarded && !msg.isDeleted && (
                                     <div
                                       className={`flex items-center gap-1 text-[10px] italic font-medium mb-1.5 pb-1 border-b ${
@@ -1765,7 +1529,7 @@ export const ChatPage = () => {
                                     </div>
                                   )}
 
-                                  {/* Deleted Message WhatsApp Tombstone */}
+                                  {/* Deleted Message Tombstone */}
                                   {msg.isDeleted ? (
                                     <div className="flex items-center gap-1.5">
                                       <Ban className="h-3.5 w-3.5 text-theme-muted shrink-0" />
@@ -1773,6 +1537,69 @@ export const ChatPage = () => {
                                     </div>
                                   ) : (
                                     <>
+                                      {/* Quoted Reply inside bubble */}
+                                      {(() => {
+                                        const quoted = getQuotedMessageDetails(msg.replyTo);
+                                        if (!quoted) return null;
+                                        const quotedSenderId = getSenderId(quoted.sender?._id || quoted.sender);
+                                        const isQuotedMine = quotedSenderId === String(currentUserId);
+                                        const quotedSenderName = isQuotedMine
+                                          ? 'You'
+                                          : quoted.sender?.name || counterpart?.name || 'User';
+                                        const hasQuotedImage =
+                                          Array.isArray(quoted.attachments) &&
+                                          quoted.attachments.some((a) => a.fileType === 'image');
+                                        const quotedImageUrl = hasQuotedImage
+                                          ? quoted.attachments.find((a) => a.fileType === 'image')?.url
+                                          : null;
+
+                                        return (
+                                          <div
+                                            onClick={(e) => {
+                                              e.stopPropagation();
+                                              handleScrollToQuotedMessage(quoted._id);
+                                            }}
+                                            className={`mb-2 p-2 rounded-lg cursor-pointer transition-all border-l-4 text-xs select-none flex items-center justify-between gap-2.5 ${
+                                              isMine
+                                                ? 'bg-black/20 border-white hover:bg-black/30 text-white'
+                                                : 'bg-theme-surface-subtle border-l-theme-brand border-t border-r border-b border-theme-border/60 hover:bg-theme-surface-hover text-theme-primary'
+                                            }`}
+                                            title="Click to jump to quoted message"
+                                          >
+                                            <div className="min-w-0 flex-1">
+                                              <p
+                                                className={`text-[11px] font-bold truncate mb-0.5 ${
+                                                  isMine ? 'text-white' : 'text-theme-brand'
+                                                }`}
+                                              >
+                                                {quotedSenderName}
+                                              </p>
+                                              <p
+                                                className={`text-[11px] truncate ${
+                                                  isMine ? 'text-white/85' : 'text-theme-secondary'
+                                                } ${quoted.isDeleted ? 'italic opacity-80' : ''}`}
+                                              >
+                                                {quoted.isDeleted
+                                                  ? 'This message was deleted'
+                                                  : quoted.text ||
+                                                    (quoted.attachments?.length > 0
+                                                      ? quoted.attachments[0].fileType === 'image'
+                                                        ? '📷 Photo'
+                                                        : `📄 ${quoted.attachments[0].originalName || 'Document'}`
+                                                      : 'Message')}
+                                              </p>
+                                            </div>
+                                            {quotedImageUrl && (
+                                              <img
+                                                src={quotedImageUrl}
+                                                alt="quoted thumbnail"
+                                                className="h-9 w-9 object-cover rounded-md shrink-0 border border-black/10 dark:border-white/10"
+                                              />
+                                            )}
+                                          </div>
+                                        );
+                                      })()}
+
                                       {/* Attached Media & Docs */}
                                       {Array.isArray(msg.attachments) && msg.attachments.length > 0 && (
                                         <div className="flex flex-col gap-2 mb-2">
@@ -1799,7 +1626,6 @@ export const ChatPage = () => {
                                               );
                                             }
 
-                                            // Document card
                                             return (
                                               <a
                                                 key={attIdx}
@@ -1845,7 +1671,7 @@ export const ChatPage = () => {
                                         </div>
                                       )}
 
-                                      {/* Text Content with URL linkification */}
+                                      {/* Text Content */}
                                       {msg.text && (
                                         <div className="[overflow-wrap:anywhere] break-words whitespace-pre-wrap">
                                           {renderMessageContent(msg.text, isMine)}
@@ -1856,7 +1682,7 @@ export const ChatPage = () => {
                                 </div>
                               </div>
 
-                              {/* Floating Emoji Reactions Bar under bubble */}
+                              {/* Floating Emoji Reactions Bar */}
                               {!msg.isDeleted && Object.keys(reactionCounts).length > 0 && (
                                 <div
                                   className={`flex flex-wrap items-center gap-1 mt-1 z-10 ${
@@ -1888,23 +1714,17 @@ export const ChatPage = () => {
                               {/* Timestamp + delivery checkmarks */}
                               <div
                                 className={`flex items-center gap-1 mt-1 text-[10px] text-theme-muted px-1 ${
-                                  isMine ? 'justify-end' : 'justify-start'
+                                  isMine ? 'flex-row-reverse' : 'flex-row'
                                 }`}
                               >
                                 <span>{formattedTime}</span>
                                 {isMine && !msg.isDeleted && (
-                                  <span
-                                    className={`inline-flex items-center ${
-                                      msg.isRead ? 'text-theme-brand font-semibold' : 'text-theme-muted'
-                                    }`}
-                                    title={msg.isRead ? 'Read' : 'Sent'}
-                                  >
+                                  <span title={msg.isRead ? 'Read' : 'Delivered'}>
                                     {msg.isRead ? (
-                                      <CheckCheck className="h-3.5 w-3.5 inline ml-0.5" />
+                                      <CheckCheck className="h-3.5 w-3.5 text-sky-500" />
                                     ) : (
-                                      <Check className="h-3.5 w-3.5 inline ml-0.5" />
+                                      <Check className="h-3.5 w-3.5 text-theme-muted" />
                                     )}
-                                    <span className="sr-only">{msg.isRead ? 'Read' : 'Sent'}</span>
                                   </span>
                                 )}
                               </div>
@@ -1914,28 +1734,22 @@ export const ChatPage = () => {
                       );
                     })
                   )}
-
-                  {/* Animated Typing Indicator */}
-                  {typingStatus && (
-                    <div className="flex items-start gap-2 max-w-[75%] mt-2.5">
-                      <div className="flex h-7 w-7 items-center justify-center rounded-full bg-theme-brand-subtle text-theme-brand font-bold text-[10px] uppercase shrink-0">
-                        {counterpart?.name?.[0] || 'U'}
-                      </div>
-                      <div className="rounded-2xl rounded-tl-xs bg-theme-surface border border-theme-border px-3.5 py-2.5 shadow-2xs flex items-center gap-1.5">
-                        <span className="h-1.5 w-1.5 rounded-full bg-theme-muted animate-bounce [animation-delay:-0.3s]" />
-                        <span className="h-1.5 w-1.5 rounded-full bg-theme-muted animate-bounce [animation-delay:-0.15s]" />
-                        <span className="h-1.5 w-1.5 rounded-full bg-theme-muted animate-bounce" />
-                        <span className="text-[11px] text-theme-muted ml-1.5 font-medium">
-                          {counterpart?.name || 'User'} is typing...
-                        </span>
-                      </div>
-                    </div>
-                  )}
-
                   <div ref={messagesEndRef} />
                 </div>
 
-                {/* Floating "New messages" Button when scrolled up */}
+                {/* Animated Typing Indicator */}
+                {typingStatus && (
+                  <div className="px-4 py-1.5 bg-theme-surface border-t border-theme-border flex items-center gap-2 text-xs text-theme-brand italic shrink-0 animate-in fade-in duration-200">
+                    <div className="flex gap-1">
+                      <span className="h-1.5 w-1.5 rounded-full bg-theme-brand animate-bounce" />
+                      <span className="h-1.5 w-1.5 rounded-full bg-theme-brand animate-bounce [animation-delay:0.2s]" />
+                      <span className="h-1.5 w-1.5 rounded-full bg-theme-brand animate-bounce [animation-delay:0.4s]" />
+                    </div>
+                    <span>{typingStatus}</span>
+                  </div>
+                )}
+
+                {/* Floating New Messages Button */}
                 {showScrollBottomBtn && (
                   <button
                     type="button"
@@ -1947,7 +1761,7 @@ export const ChatPage = () => {
                   </button>
                 )}
 
-                {/* Pending Attachment Preview Bar (above input) */}
+                {/* Pending Attachment Preview Bar */}
                 {pendingAttachments.length > 0 && (
                   <div className="p-2.5 bg-theme-surface-subtle border-t border-theme-border flex items-center gap-2 overflow-x-auto shrink-0">
                     <span className="text-[11px] font-semibold text-theme-muted shrink-0 mr-1">
@@ -1985,6 +1799,51 @@ export const ChatPage = () => {
                   </div>
                 )}
 
+                {/* Reply Banner */}
+                {replyingToMessage && !activeConversation?.isBlocked && (
+                  <div className="px-3.5 py-2 bg-theme-surface-subtle border-t border-theme-border flex items-center justify-between gap-3 shrink-0 animate-in slide-in-from-bottom-2 duration-150">
+                    <div className="flex items-center gap-2.5 min-w-0 flex-1 border-l-4 border-theme-brand pl-2.5 py-0.5">
+                      <Reply className="h-4 w-4 text-theme-brand shrink-0" />
+                      <div className="min-w-0 flex-1">
+                        <p className="text-[11px] font-bold text-theme-brand truncate">
+                          Replying to{' '}
+                          {getSenderId(replyingToMessage.sender?._id || replyingToMessage.sender) ===
+                          String(currentUserId)
+                            ? 'yourself'
+                            : replyingToMessage.sender?.name || counterpart?.name || 'User'}
+                        </p>
+                        <p className="text-xs text-theme-secondary truncate">
+                          {replyingToMessage.isDeleted
+                            ? 'This message was deleted'
+                            : replyingToMessage.text ||
+                              (Array.isArray(replyingToMessage.attachments) &&
+                              replyingToMessage.attachments.length > 0
+                                ? replyingToMessage.attachments[0].fileType === 'image'
+                                  ? '📷 Photo'
+                                  : `📄 ${replyingToMessage.attachments[0].originalName || 'Document'}`
+                                : 'Message')}
+                        </p>
+                      </div>
+                      {Array.isArray(replyingToMessage.attachments) &&
+                        replyingToMessage.attachments.some((a) => a.fileType === 'image') && (
+                          <img
+                            src={replyingToMessage.attachments.find((a) => a.fileType === 'image')?.url}
+                            alt="thumbnail"
+                            className="h-9 w-9 object-cover rounded-md shrink-0 border border-theme-border"
+                          />
+                        )}
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setReplyingToMessage(null)}
+                      className="p-1 rounded-full text-theme-muted hover:text-theme-primary hover:bg-theme-surface-hover transition-colors shrink-0 cursor-pointer"
+                      title="Cancel reply (Esc)"
+                    >
+                      <X className="h-4 w-4" />
+                    </button>
+                  </div>
+                )}
+
                 {/* Blocked Conversation Notice Banner or Active Input Box */}
                 {activeConversation.isBlocked ? (
                   <div className="p-3.5 bg-theme-surface-subtle border-t border-theme-border flex flex-col sm:flex-row items-center justify-between gap-3 text-center sm:text-left shrink-0">
@@ -2014,7 +1873,6 @@ export const ChatPage = () => {
                     onSubmit={handleSendMessage}
                     className="p-3 bg-theme-surface border-t border-theme-border flex items-center gap-2 shrink-0"
                   >
-                    {/* Hidden native file pickers */}
                     <input
                       type="file"
                       ref={fileInputRef}
@@ -2031,8 +1889,16 @@ export const ChatPage = () => {
                       accept="image/*"
                       className="hidden"
                     />
+                    <input
+                      type="file"
+                      ref={cameraInputRef}
+                      onChange={handleFileChange}
+                      accept="image/*"
+                      capture="environment"
+                      className="hidden"
+                    />
 
-                    {/* WhatsApp Style Attachment Plus (+) Button & Popup Menu */}
+                    {/* Attachment Plus (+) Button & Menu */}
                     <div className="relative shrink-0" ref={attachMenuRef}>
                       <button
                         type="button"
@@ -2048,10 +1914,8 @@ export const ChatPage = () => {
                         <Plus className="h-5 w-5 transition-transform duration-200" />
                       </button>
 
-                      {/* Attachment Popup Menu with Icons & Names */}
                       {showAttachMenu && (
                         <div className="absolute bottom-12 left-0 z-40 w-52 rounded-2xl border border-theme-border bg-theme-surface p-1.5 shadow-2xl animate-in slide-in-from-bottom-2 zoom-in-95 duration-150 flex flex-col gap-1">
-                          {/* 1. Document */}
                           <button
                             type="button"
                             onClick={() => {
@@ -2069,7 +1933,6 @@ export const ChatPage = () => {
                             </div>
                           </button>
 
-                          {/* 2. Photos & Media */}
                           <button
                             type="button"
                             onClick={() => {
@@ -2087,12 +1950,11 @@ export const ChatPage = () => {
                             </div>
                           </button>
 
-                          {/* 3. Camera */}
                           <button
                             type="button"
                             onClick={() => {
                               setShowAttachMenu(false);
-                              openCameraModal();
+                              cameraInputRef.current?.click();
                             }}
                             className="flex items-center gap-3 w-full p-2.5 rounded-xl hover:bg-theme-surface-hover text-left transition-colors cursor-pointer group"
                           >
@@ -2109,11 +1971,24 @@ export const ChatPage = () => {
                     </div>
 
                     <input
+                      ref={messageInputRef}
                       type="text"
                       value={inputText}
                       onChange={handleInputChange}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Escape' && replyingToMessage) {
+                          setReplyingToMessage(null);
+                        }
+                      }}
                       placeholder={
-                        pendingAttachments.length > 0
+                        replyingToMessage
+                          ? `Replying to ${
+                              getSenderId(replyingToMessage.sender?._id || replyingToMessage.sender) ===
+                              String(currentUserId)
+                                ? 'yourself'
+                                : replyingToMessage.sender?.name || counterpart?.name || 'user'
+                            }...`
+                          : pendingAttachments.length > 0
                           ? 'Add a caption...'
                           : `Type a message to ${counterpart?.name || 'user'}...`
                       }
@@ -2137,175 +2012,17 @@ export const ChatPage = () => {
               </div>
 
               {/* WhatsApp-Style Right Drawer: Media, Links and Docs */}
-              {showMediaDrawer && (
-                <div className="w-80 sm:w-96 border-l border-theme-border bg-theme-surface flex flex-col z-20 animate-in slide-in-from-right duration-200 shadow-xl shrink-0">
-                  {/* Drawer Header */}
-                  <div className="p-4 border-b border-theme-border flex items-center justify-between bg-theme-surface-subtle">
-                    <div className="flex items-center gap-2">
-                      <Folder className="h-4 w-4 text-theme-brand" />
-                      <h3 className="text-xs font-bold text-theme-primary">Media, Links & Docs</h3>
-                    </div>
-                    <div className="flex items-center gap-1">
-                      <button
-                        type="button"
-                        onClick={handleOpenStorageModal}
-                        className="p-1 rounded-lg text-theme-muted hover:text-theme-primary hover:bg-theme-surface-hover transition-colors cursor-pointer"
-                        title="View Storage Usage"
-                      >
-                        <HardDrive className="h-4 w-4" />
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => setShowMediaDrawer(false)}
-                        className="p-1 rounded-lg text-theme-muted hover:text-theme-primary hover:bg-theme-surface-hover transition-colors"
-                      >
-                        <X className="h-4 w-4" />
-                      </button>
-                    </div>
-                  </div>
-
-                  {/* Tabs */}
-                  <div className="grid grid-cols-3 border-b border-theme-border bg-theme-surface text-xs font-semibold text-center">
-                    <button
-                      type="button"
-                      onClick={() => setMediaDrawerTab('media')}
-                      className={`py-2.5 border-b-2 transition-colors cursor-pointer ${
-                        mediaDrawerTab === 'media'
-                          ? 'border-theme-brand text-theme-brand'
-                          : 'border-transparent text-theme-muted hover:text-theme-primary'
-                      }`}
-                    >
-                      Media ({conversationMediaData.media?.length || 0})
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setMediaDrawerTab('docs')}
-                      className={`py-2.5 border-b-2 transition-colors cursor-pointer ${
-                        mediaDrawerTab === 'docs'
-                          ? 'border-theme-brand text-theme-brand'
-                          : 'border-transparent text-theme-muted hover:text-theme-primary'
-                      }`}
-                    >
-                      Docs ({conversationMediaData.docs?.length || 0})
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setMediaDrawerTab('links')}
-                      className={`py-2.5 border-b-2 transition-colors cursor-pointer ${
-                        mediaDrawerTab === 'links'
-                          ? 'border-theme-brand text-theme-brand'
-                          : 'border-transparent text-theme-muted hover:text-theme-primary'
-                      }`}
-                    >
-                      Links ({conversationMediaData.links?.length || 0})
-                    </button>
-                  </div>
-
-                  {/* Drawer Tab Content */}
-                  <div className="flex-1 min-h-0 overflow-y-auto p-3">
-                    {isLoadingMedia ? (
-                      <div className="flex items-center justify-center py-16">
-                        <Loader2 className="h-5 w-5 animate-spin text-theme-brand" />
-                      </div>
-                    ) : mediaDrawerTab === 'media' ? (
-                      conversationMediaData.media?.length === 0 ? (
-                        <div className="text-center py-12 text-theme-muted text-xs">
-                          <ImageIcon className="h-8 w-8 mx-auto mb-2 opacity-50" />
-                          <p>No photos or media shared yet</p>
-                        </div>
-                      ) : (
-                        <div className="grid grid-cols-3 gap-2">
-                          {conversationMediaData.media.map((item, mIdx) => (
-                            <div
-                              key={mIdx}
-                              onClick={() => setLightboxImage(item.url)}
-                              className="relative aspect-square rounded-lg overflow-hidden bg-theme-surface-subtle cursor-pointer group"
-                            >
-                              <img
-                                src={item.url}
-                                alt={item.originalName || 'Photo'}
-                                className="w-full h-full object-cover group-hover:scale-105 transition-transform"
-                                loading="lazy"
-                              />
-                              <div className="absolute inset-0 bg-black/30 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center text-white">
-                                <Eye className="h-4 w-4" />
-                              </div>
-                            </div>
-                          ))}
-                        </div>
-                      )
-                    ) : mediaDrawerTab === 'docs' ? (
-                      conversationMediaData.docs?.length === 0 ? (
-                        <div className="text-center py-12 text-theme-muted text-xs">
-                          <FileText className="h-8 w-8 mx-auto mb-2 opacity-50" />
-                          <p>No documents or PDFs shared yet</p>
-                        </div>
-                      ) : (
-                        <div className="flex flex-col gap-2">
-                          {conversationMediaData.docs.map((doc, dIdx) => (
-                            <a
-                              key={dIdx}
-                              href={doc.url}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              download={doc.originalName}
-                              className="flex items-center gap-3 p-2.5 rounded-xl border border-theme-border bg-theme-surface-subtle hover:bg-theme-surface-hover transition-colors"
-                            >
-                              <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-theme-brand-subtle text-theme-brand shrink-0">
-                                <FileText className="h-4 w-4" />
-                              </div>
-                              <div className="flex-1 min-w-0">
-                                <p className="text-xs font-semibold text-theme-primary truncate">
-                                  {doc.originalName || 'Document'}
-                                </p>
-                                <p className="text-[10px] text-theme-muted">
-                                  {formatFileSize(doc.fileSize)} •{' '}
-                                  {new Date(doc.createdAt).toLocaleDateString()}
-                                </p>
-                              </div>
-                              <Download className="h-4 w-4 text-theme-muted hover:text-theme-primary shrink-0" />
-                            </a>
-                          ))}
-                        </div>
-                      )
-                    ) : (
-                      conversationMediaData.links?.length === 0 ? (
-                        <div className="text-center py-12 text-theme-muted text-xs">
-                          <ExternalLink className="h-8 w-8 mx-auto mb-2 opacity-50" />
-                          <p>No web links shared yet</p>
-                        </div>
-                      ) : (
-                        <div className="flex flex-col gap-2">
-                          {conversationMediaData.links.map((linkItem, lIdx) => (
-                            <a
-                              key={lIdx}
-                              href={linkItem.url}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="p-2.5 rounded-xl border border-theme-border bg-theme-surface-subtle hover:bg-theme-surface-hover transition-colors flex items-start gap-2.5"
-                            >
-                              <div className="flex h-7 w-7 items-center justify-center rounded-md bg-sky-500/10 text-sky-500 shrink-0 mt-0.5">
-                                <ExternalLink className="h-3.5 w-3.5" />
-                              </div>
-                              <div className="flex-1 min-w-0">
-                                <p className="text-xs font-semibold text-sky-500 truncate">
-                                  {linkItem.url}
-                                </p>
-                                <p className="text-[11px] text-theme-secondary line-clamp-2 mt-0.5">
-                                  {linkItem.text}
-                                </p>
-                                <p className="text-[9px] text-theme-muted mt-1">
-                                  {new Date(linkItem.createdAt).toLocaleDateString()}
-                                </p>
-                              </div>
-                            </a>
-                          ))}
-                        </div>
-                      )
-                    )}
-                  </div>
-                </div>
-              )}
+              <ChatMediaDrawer
+                isOpen={showMediaDrawer}
+                onClose={() => setShowMediaDrawer(false)}
+                mediaData={conversationMediaData}
+                isLoading={isLoadingMedia}
+                activeTab={mediaDrawerTab}
+                onTabChange={setMediaDrawerTab}
+                onOpenStorage={handleOpenStorageModal}
+                onPreviewImage={setLightboxImage}
+                formatFileSize={formatFileSize}
+              />
             </div>
           ) : (
             <div className="flex-1 flex flex-col items-center justify-center text-center p-8 bg-theme-surface">
@@ -2322,525 +2039,66 @@ export const ChatPage = () => {
       </div>
 
       {/* WhatsApp Forward Modal */}
-      {forwardModalMessage && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-4 animate-in fade-in duration-150">
-          <div className="w-full max-w-md bg-theme-surface border border-theme-border rounded-2xl shadow-2xl flex flex-col max-h-[80vh] overflow-hidden">
-            <div className="p-4 border-b border-theme-border flex items-center justify-between bg-theme-surface-subtle">
-              <div className="flex items-center gap-2">
-                <Forward className="h-4 w-4 text-theme-brand" />
-                <h3 className="text-sm font-bold text-theme-primary">Forward message to...</h3>
-              </div>
-              <button
-                type="button"
-                onClick={() => setForwardModalMessage(null)}
-                className="p-1 rounded-lg text-theme-muted hover:text-theme-primary hover:bg-theme-surface-hover"
-              >
-                <X className="h-4 w-4" />
-              </button>
-            </div>
+      <ChatForwardModal
+        isOpen={Boolean(forwardModalMessage)}
+        onClose={() => setForwardModalMessage(null)}
+        message={forwardModalMessage}
+        conversations={conversations}
+        selectedTargets={selectedForwardTargets}
+        onToggleTarget={(convId) => {
+          setSelectedForwardTargets((prev) =>
+            prev.includes(convId) ? prev.filter((id) => id !== convId) : [...prev, convId]
+          );
+        }}
+        onForward={handleExecuteForward}
+        isForwarding={isForwarding}
+        getCounterpart={getCounterpart}
+      />
 
-            {/* Message preview snippet */}
-            <div className="p-3 bg-theme-bg border-b border-theme-border text-xs text-theme-secondary flex items-center gap-2">
-              <span className="font-semibold text-theme-primary shrink-0">Forwarding:</span>
-              <span className="truncate italic">
-                {forwardModalMessage.text ||
-                  (forwardModalMessage.attachments?.[0]?.fileType === 'image'
-                    ? '📷 Photo'
-                    : '📄 Document')}
-              </span>
-            </div>
+      {/* WhatsApp Storage Modal */}
+      <ChatStorageModal
+        isOpen={showStorageModal}
+        onClose={() => setShowStorageModal(false)}
+        storageData={storageData}
+        isLoading={isLoadingStorage}
+        counterpartName={counterpart?.name}
+        propertyTitle={activeConversation?.pg?.title}
+        onPreviewImage={setLightboxImage}
+        formatFileSize={formatFileSize}
+      />
 
-            {/* Conversation list to choose recipients */}
-            <div className="flex-1 min-h-0 overflow-y-auto divide-y divide-theme-border p-2">
-              {conversations.map((conv) => {
-                const cp = getCounterpart(conv);
-                const isChecked = selectedForwardTargets.includes(conv._id);
-                return (
-                  <button
-                    key={conv._id}
-                    type="button"
-                    onClick={() => {
-                      setSelectedForwardTargets((prev) =>
-                        prev.includes(conv._id)
-                          ? prev.filter((id) => id !== conv._id)
-                          : [...prev, conv._id]
-                      );
-                    }}
-                    className={`w-full p-3 rounded-xl flex items-center justify-between text-left transition-colors cursor-pointer ${
-                      isChecked ? 'bg-theme-brand-subtle/50' : 'hover:bg-theme-surface-hover'
-                    }`}
-                  >
-                    <div className="flex items-center gap-3 min-w-0">
-                      <div className="flex h-9 w-9 items-center justify-center rounded-full bg-theme-brand-subtle text-theme-brand font-bold text-xs uppercase shrink-0">
-                        {cp?.name?.[0] || 'U'}
-                      </div>
-                      <div className="min-w-0">
-                        <p className="text-xs font-bold text-theme-primary truncate">
-                          {cp?.name || 'User'}
-                        </p>
-                        <p className="text-[11px] text-theme-muted truncate">
-                          {conv.pg?.title || 'Accommodation'}
-                        </p>
-                      </div>
-                    </div>
-                    <div
-                      className={`h-5 w-5 rounded-md border flex items-center justify-center transition-colors ${
-                        isChecked
-                          ? 'bg-theme-brand border-theme-brand text-white'
-                          : 'border-theme-border bg-theme-surface'
-                      }`}
-                    >
-                      {isChecked && <Check className="h-3.5 w-3.5" />}
-                    </div>
-                  </button>
-                );
-              })}
-            </div>
-
-            {/* Modal Footer */}
-            <div className="p-3 border-t border-theme-border bg-theme-surface-subtle flex items-center justify-between">
-              <span className="text-xs text-theme-muted">
-                {selectedForwardTargets.length} selected
-              </span>
-              <div className="flex items-center gap-2">
-                <button
-                  type="button"
-                  onClick={() => setForwardModalMessage(null)}
-                  className="px-3 py-1.5 rounded-lg border border-theme-border bg-theme-surface text-xs font-semibold text-theme-secondary hover:bg-theme-surface-hover"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="button"
-                  disabled={selectedForwardTargets.length === 0 || isForwarding}
-                  onClick={handleExecuteForward}
-                  className="px-4 py-1.5 rounded-lg bg-theme-brand text-xs font-bold text-white hover:bg-theme-brand-hover disabled:opacity-40 transition-colors shadow-xs flex items-center gap-1.5 cursor-pointer"
-                >
-                  {isForwarding ? (
-                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                  ) : (
-                    <Send className="h-3.5 w-3.5" />
-                  )}
-                  <span>Forward ({selectedForwardTargets.length})</span>
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Interactive Camera Capture Modal */}
-      {showCameraModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4 animate-in fade-in duration-150">
-          <div className="w-full max-w-lg bg-theme-surface border border-theme-border rounded-2xl shadow-2xl flex flex-col overflow-hidden">
-            {/* Modal Header */}
-            <div className="p-3.5 border-b border-theme-border flex items-center justify-between bg-theme-surface-subtle">
-              <div className="flex items-center gap-2">
-                <Camera className="h-4 w-4 text-theme-brand" />
-                <h3 className="text-xs font-bold text-theme-primary">Capture Photo</h3>
-              </div>
-              <button
-                type="button"
-                onClick={closeCameraModal}
-                className="p-1 rounded-lg text-theme-muted hover:text-theme-primary hover:bg-theme-surface-hover"
-              >
-                <X className="h-4 w-4" />
-              </button>
-            </div>
-
-            {/* Video Viewfinder / Captured Photo Preview */}
-            <div className="relative aspect-video bg-black flex items-center justify-center overflow-hidden">
-              {capturedPhotoUrl ? (
-                <img
-                  src={capturedPhotoUrl}
-                  alt="Captured"
-                  className="w-full h-full object-contain"
-                />
-              ) : cameraError ? (
-                <div className="p-6 text-center text-rose-400 max-w-xs">
-                  <AlertTriangle className="h-8 w-8 mx-auto mb-2 opacity-80" />
-                  <p className="text-xs font-semibold">{cameraError}</p>
-                  <p className="text-[11px] text-white/70 mt-1 mb-3">
-                    You can still capture using your device camera app.
-                  </p>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      cameraFallbackInputRef.current?.click();
-                      closeCameraModal();
-                    }}
-                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold"
-                  >
-                    <Camera className="h-3.5 w-3.5" />
-                    <span>Open Device Camera</span>
-                  </button>
-                </div>
-              ) : (
-                <video
-                  ref={videoRef}
-                  autoPlay
-                  playsInline
-                  muted
-                  className="w-full h-full object-cover"
-                />
-              )}
-            </div>
-
-            {/* Hidden native camera capture input for device fallback */}
-            <input
-              type="file"
-              ref={cameraFallbackInputRef}
-              accept="image/*"
-              capture="environment"
-              onChange={handleFileChange}
-              className="hidden"
-            />
-
-            {/* Modal Controls */}
-            <div className="p-3.5 border-t border-theme-border bg-theme-surface-subtle flex items-center justify-between">
-              {capturedPhotoUrl ? (
-                <>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setCapturedPhotoUrl(null);
-                      setCapturedBlob(null);
-                      startCamera();
-                    }}
-                    className="px-3.5 py-1.5 rounded-xl border border-theme-border bg-theme-surface hover:bg-theme-surface-hover text-xs font-semibold text-theme-secondary cursor-pointer"
-                  >
-                    Retake
-                  </button>
-                  <button
-                    type="button"
-                    onClick={handleAttachCapturedPhoto}
-                    className="px-4 py-1.5 rounded-xl bg-theme-brand hover:bg-theme-brand-hover text-white text-xs font-bold flex items-center gap-1.5 cursor-pointer shadow-xs"
-                  >
-                    <Check className="h-3.5 w-3.5" />
-                    <span>Attach Photo</span>
-                  </button>
-                </>
-              ) : (
-                <>
-                  <button
-                    type="button"
-                    onClick={closeCameraModal}
-                    className="px-3.5 py-1.5 rounded-xl border border-theme-border bg-theme-surface hover:bg-theme-surface-hover text-xs font-semibold text-theme-secondary cursor-pointer"
-                  >
-                    Cancel
-                  </button>
-                  {!cameraError && (
-                    <button
-                      type="button"
-                      onClick={takePhotoSnapshot}
-                      className="flex items-center gap-2 px-5 py-2 rounded-xl bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold shadow-md cursor-pointer transition-transform active:scale-95"
-                    >
-                      <Camera className="h-4 w-4" />
-                      <span>Snap Photo</span>
-                    </button>
-                  )}
-                </>
-              )}
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* WhatsApp Style Storage Usage Modal */}
-      {showStorageModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-4 animate-in fade-in duration-150">
-          <div className="w-full max-w-lg bg-theme-surface border border-theme-border rounded-2xl shadow-2xl flex flex-col max-h-[85vh] overflow-hidden">
-            {/* Modal Header */}
-            <div className="p-4 border-b border-theme-border flex items-center justify-between bg-theme-surface-subtle">
-              <div className="flex items-center gap-2.5">
-                <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-theme-brand-subtle text-theme-brand">
-                  <HardDrive className="h-4.5 w-4.5" />
-                </div>
-                <div>
-                  <h3 className="text-xs font-bold text-theme-primary">Storage Usage</h3>
-                  <p className="text-[10px] text-theme-muted">
-                    {counterpart?.name || 'Chat'} • {activeConversation?.pg?.title || 'Accommodation'}
-                  </p>
-                </div>
-              </div>
-              <button
-                type="button"
-                onClick={() => setShowStorageModal(false)}
-                className="p-1 rounded-lg text-theme-muted hover:text-theme-primary hover:bg-theme-surface-hover"
-              >
-                <X className="h-4 w-4" />
-              </button>
-            </div>
-
-            {/* Modal Content */}
-            <div className="flex-1 min-h-0 overflow-y-auto p-4 space-y-4">
-              {isLoadingStorage ? (
-                <div className="flex flex-col items-center justify-center py-12 gap-2 text-theme-muted">
-                  <Loader2 className="h-6 w-6 animate-spin text-theme-brand" />
-                  <span className="text-xs">Calculating storage...</span>
-                </div>
-              ) : (
-                <>
-                  {/* Total Storage Summary Card */}
-                  <div className="p-4 rounded-xl border border-theme-border bg-theme-surface-subtle flex items-center justify-between">
-                    <div>
-                      <p className="text-[11px] font-semibold text-theme-muted uppercase tracking-wider">
-                        Total Chat Storage
-                      </p>
-                      <h4 className="text-xl font-bold text-theme-primary mt-0.5">
-                        {formatFileSize(storageData?.totalBytes || 0)}
-                      </h4>
-                      <p className="text-[11px] text-theme-muted mt-0.5">
-                        {storageData?.totalFiles || 0} shared item{(storageData?.totalFiles || 0) === 1 ? '' : 's'}
-                      </p>
-                    </div>
-                    <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-theme-brand text-white shadow-md">
-                      <Folder className="h-6 w-6" />
-                    </div>
-                  </div>
-
-                  {/* Storage Visual Bar */}
-                  {storageData?.totalBytes > 0 && (
-                    <div className="space-y-1.5">
-                      <div className="h-3 w-full rounded-full bg-theme-surface-hover overflow-hidden flex">
-                        <div
-                          style={{
-                            width: `${Math.round(
-                              ((storageData.imageBytes || 0) / (storageData.totalBytes || 1)) * 100
-                            )}%`,
-                          }}
-                          className="bg-purple-500 h-full transition-all"
-                          title={`Photos & Media: ${formatFileSize(storageData.imageBytes || 0)}`}
-                        />
-                        <div
-                          style={{
-                            width: `${Math.round(
-                              ((storageData.docBytes || 0) / (storageData.totalBytes || 1)) * 100
-                            )}%`,
-                          }}
-                          className="bg-indigo-500 h-full transition-all"
-                          title={`Documents: ${formatFileSize(storageData.docBytes || 0)}`}
-                        />
-                      </div>
-                      <div className="flex items-center justify-between text-[11px] text-theme-muted px-0.5">
-                        <span className="flex items-center gap-1.5">
-                          <span className="h-2 w-2 rounded-full bg-purple-500 inline-block" />
-                          <span>Photos ({formatFileSize(storageData?.imageBytes || 0)})</span>
-                        </span>
-                        <span className="flex items-center gap-1.5">
-                          <span className="h-2 w-2 rounded-full bg-indigo-500 inline-block" />
-                          <span>Docs ({formatFileSize(storageData?.docBytes || 0)})</span>
-                        </span>
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Category Breakdown Cards */}
-                  <div className="grid grid-cols-2 gap-3">
-                    <div className="p-3 rounded-xl border border-theme-border bg-theme-surface flex items-center gap-3">
-                      <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-purple-500/15 text-purple-600 dark:text-purple-400 shrink-0">
-                        <ImageIcon className="h-4.5 w-4.5" />
-                      </div>
-                      <div className="min-w-0">
-                        <p className="text-xs font-bold text-theme-primary">Photos & Media</p>
-                        <p className="text-[10px] text-theme-muted">
-                          {storageData?.imageCount || 0} files • {formatFileSize(storageData?.imageBytes || 0)}
-                        </p>
-                      </div>
-                    </div>
-
-                    <div className="p-3 rounded-xl border border-theme-border bg-theme-surface flex items-center gap-3">
-                      <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-indigo-500/15 text-indigo-600 dark:text-indigo-400 shrink-0">
-                        <FileText className="h-4.5 w-4.5" />
-                      </div>
-                      <div className="min-w-0">
-                        <p className="text-xs font-bold text-theme-primary">Documents</p>
-                        <p className="text-[10px] text-theme-muted">
-                          {storageData?.docCount || 0} files • {formatFileSize(storageData?.docBytes || 0)}
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Itemized Files List */}
-                  <div className="space-y-2 pt-2">
-                    <h5 className="text-xs font-bold text-theme-primary">
-                      Shared Files ({storageData?.files?.length || 0})
-                    </h5>
-                    {!storageData?.files || storageData.files.length === 0 ? (
-                      <div className="text-center py-8 text-theme-muted text-xs">
-                        <HardDrive className="h-6 w-6 mx-auto mb-1.5 opacity-40" />
-                        <p>No files shared in this chat yet</p>
-                      </div>
-                    ) : (
-                      <div className="space-y-1.5 max-h-60 overflow-y-auto pr-1">
-                        {storageData.files.map((file, fIdx) => (
-                          <div
-                            key={fIdx}
-                            className="p-2.5 rounded-xl border border-theme-border bg-theme-surface hover:bg-theme-surface-hover flex items-center justify-between gap-3 text-xs transition-colors"
-                          >
-                            <div className="flex items-center gap-2.5 min-w-0">
-                              <div
-                                className={`flex h-8 w-8 items-center justify-center rounded-lg shrink-0 ${
-                                  file.fileType === 'image'
-                                    ? 'bg-purple-500/15 text-purple-600 dark:text-purple-400'
-                                    : 'bg-indigo-500/15 text-indigo-600 dark:text-indigo-400'
-                                }`}
-                              >
-                                {file.fileType === 'image' ? (
-                                  <ImageIcon className="h-4 w-4" />
-                                ) : (
-                                  <FileText className="h-4 w-4" />
-                                )}
-                              </div>
-                              <div className="min-w-0">
-                                <p className="font-semibold text-theme-primary truncate max-w-[200px] sm:max-w-[260px]">
-                                  {file.originalName}
-                                </p>
-                                <p className="text-[10px] text-theme-muted">
-                                  {formatFileSize(file.fileSize)} •{' '}
-                                  {new Date(file.createdAt).toLocaleDateString()}
-                                </p>
-                              </div>
-                            </div>
-                            <div className="flex items-center gap-1 shrink-0">
-                              {file.fileType === 'image' ? (
-                                <button
-                                  type="button"
-                                  onClick={() => setLightboxImage(file.url)}
-                                  className="p-1.5 rounded-lg text-theme-muted hover:text-theme-primary hover:bg-theme-surface transition-colors cursor-pointer"
-                                  title="Preview"
-                                >
-                                  <Eye className="h-3.5 w-3.5" />
-                                </button>
-                              ) : null}
-                              <a
-                                href={file.url}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                download={file.originalName}
-                                className="p-1.5 rounded-lg text-theme-muted hover:text-theme-primary hover:bg-theme-surface transition-colors"
-                                title="Download"
-                              >
-                                <Download className="h-3.5 w-3.5" />
-                              </a>
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-                </>
-              )}
-            </div>
-
-            {/* Modal Footer */}
-            <div className="p-3 border-t border-theme-border bg-theme-surface-subtle flex justify-end">
-              <button
-                type="button"
-                onClick={() => setShowStorageModal(false)}
-                className="px-4 py-1.5 rounded-xl border border-theme-border bg-theme-surface hover:bg-theme-surface-hover text-xs font-semibold text-theme-secondary transition-colors cursor-pointer"
-              >
-                Close
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* WhatsApp Style Delete Message Confirmation Modal */}
-      {deleteModalMessage && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-4 animate-in fade-in duration-150">
-          <div className="w-full max-w-sm bg-theme-surface border border-theme-border rounded-2xl shadow-2xl p-5 flex flex-col gap-4">
-            <div className="flex items-start gap-3">
-              <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-rose-500/15 text-rose-600 dark:text-rose-400 shrink-0">
-                <Trash2 className="h-5 w-5" />
-              </div>
-              <div className="min-w-0 flex-1">
-                <h3 className="text-sm font-bold text-theme-primary">Delete message?</h3>
-                <p className="text-xs text-theme-muted mt-0.5 line-clamp-2">
-                  {deleteModalMessage.text ||
-                    (deleteModalMessage.attachments?.[0]?.originalName
-                      ? `Attachment: ${deleteModalMessage.attachments[0].originalName}`
-                      : 'Selected message')}
-                </p>
-              </div>
-            </div>
-
-            <div className="flex flex-col gap-2 pt-1">
-              {/* If current user is sender and message isn't already deleted, show Delete for everyone */}
-              {getSenderId(deleteModalMessage.sender) === String(currentUserId) &&
-                !deleteModalMessage.isDeleted && (
-                  <button
-                    type="button"
-                    disabled={isDeletingMessage}
-                    onClick={() => handleExecuteDelete(deleteModalMessage._id, 'everyone')}
-                    className="w-full py-2 px-3 rounded-xl bg-rose-600 hover:bg-rose-700 text-white font-bold text-xs transition-colors cursor-pointer shadow-xs text-center"
-                  >
-                    Delete for everyone
-                  </button>
-                )}
-
-              <button
-                type="button"
-                disabled={isDeletingMessage}
-                onClick={() => handleExecuteDelete(deleteModalMessage._id, 'me')}
-                className="w-full py-2 px-3 rounded-xl border border-theme-border bg-theme-surface hover:bg-theme-surface-hover text-theme-primary font-semibold text-xs transition-colors cursor-pointer text-center"
-              >
-                Delete for me
-              </button>
-
-              <button
-                type="button"
-                onClick={() => setDeleteModalMessage(null)}
-                className="w-full py-1.5 px-3 rounded-xl text-theme-muted hover:text-theme-primary text-xs font-medium transition-colors cursor-pointer text-center"
-              >
-                Cancel
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      {/* WhatsApp Delete Message Confirmation Modal */}
+      <ChatDeleteModal
+        isOpen={Boolean(deleteModalMessage)}
+        onClose={() => setDeleteModalMessage(null)}
+        message={deleteModalMessage}
+        currentUserId={currentUserId}
+        isDeleting={isDeletingMessage}
+        onDelete={handleExecuteDelete}
+        getSenderId={getSenderId}
+      />
 
       {/* Full-Screen Image Lightbox Modal */}
       {lightboxImage && (
         <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/85 backdrop-blur-md p-4 animate-in fade-in duration-200"
           onClick={() => setLightboxImage(null)}
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/90 backdrop-blur-xs p-4 animate-in fade-in duration-150 cursor-pointer"
         >
-          <div className="relative max-w-4xl max-h-[90vh] flex flex-col items-center">
-            <div className="absolute top-3 right-3 flex items-center gap-2 z-10">
-              <a
-                href={lightboxImage}
-                target="_blank"
-                rel="noopener noreferrer"
-                download
-                onClick={(e) => e.stopPropagation()}
-                className="p-2 rounded-full bg-black/60 text-white hover:bg-black/90 transition-colors"
-                title="Download full image"
-              >
-                <Download className="h-4 w-4" />
-              </a>
-              <button
-                type="button"
-                onClick={() => setLightboxImage(null)}
-                className="p-2 rounded-full bg-black/60 text-white hover:bg-black/90 transition-colors cursor-pointer"
-                title="Close"
-              >
-                <X className="h-4 w-4" />
-              </button>
-            </div>
-            <img
-              src={lightboxImage}
-              alt="Enlarged preview"
-              className="max-h-[85vh] max-w-full rounded-xl object-contain shadow-2xl"
-              onClick={(e) => e.stopPropagation()}
-            />
-          </div>
+          <button
+            type="button"
+            onClick={() => setLightboxImage(null)}
+            className="absolute top-4 right-4 p-2 rounded-full bg-black/50 text-white/80 hover:text-white hover:bg-black/80 transition-colors cursor-pointer"
+          >
+            <X className="h-6 w-6" />
+          </button>
+          <img
+            src={lightboxImage}
+            alt="Preview"
+            onClick={(e) => e.stopPropagation()}
+            className="max-w-[90vw] max-h-[85vh] object-contain rounded-xl shadow-2xl"
+          />
         </div>
       )}
     </div>
   );
 };
-
-export default ChatPage;

@@ -215,19 +215,23 @@ export const SocketProvider = ({ children }) => {
         data: { conversationId, messageId: idKey },
       };
 
-      // Prioritize Service Worker: bypasses Chrome background tab timer throttling entirely!
+      // 1. Deliver native OS desktop notification INSTANTLY (0ms latency on Windows/macOS/Linux)
+      const directNotif = dispatchDirectNotification(notifTitle, notifOptions, conversationId);
+      if (directNotif) {
+        return directNotif;
+      }
+
+      // 2. Fallback to Service Worker only if direct constructor fails (e.g. mobile Android Chrome)
       if (typeof navigator !== 'undefined' && 'serviceWorker' in navigator && navigator.serviceWorker.controller) {
         navigator.serviceWorker.ready
           .then((reg) => {
             return reg.showNotification(notifTitle, notifOptions);
           })
-          .catch(() => {
-            dispatchDirectNotification(notifTitle, notifOptions, conversationId);
-          });
+          .catch(() => {});
         return null;
       }
 
-      return dispatchDirectNotification(notifTitle, notifOptions, conversationId);
+      return null;
     },
     [dispatchDirectNotification]
   );

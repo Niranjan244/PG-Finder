@@ -107,8 +107,8 @@ export const registerChatSocketHandlers = (io) => {
       }
     });
 
-    // Send a message (text, media, attachments, forwarded)
-    socket.on('send_message', async ({ conversationId, text = '', attachments = [], isForwarded = false }, callback) => {
+    // Send a message (text, media, attachments, forwarded, reply)
+    socket.on('send_message', async ({ conversationId, text = '', attachments = [], isForwarded = false, replyTo = null }, callback) => {
       try {
         if (!conversationId || ((!text || !text.trim()) && (!attachments || attachments.length === 0))) {
           if (callback) callback({ success: false, message: 'Valid conversation ID and text or attachment required' });
@@ -122,6 +122,7 @@ export const registerChatSocketHandlers = (io) => {
           text,
           attachments,
           isForwarded,
+          replyTo,
         });
 
         const roomName = `conversation_${conversationId}`;

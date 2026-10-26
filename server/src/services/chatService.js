@@ -95,7 +95,12 @@ export const getConversationMessages = async (conversationId, userId, { page = 1
     .sort({ createdAt: -1 })
     .skip(skip)
     .limit(parsedLimit)
-    .populate('sender', 'name role');
+    .populate('sender', 'name role')
+    .populate({
+      path: 'replyTo',
+      select: 'text attachments isDeleted sender',
+      populate: { path: 'sender', select: 'name role' },
+    });
 
   const messages = rawMessages.reverse();
 
@@ -117,6 +122,7 @@ export const saveChatMessage = async ({
   text = '',
   attachments = [],
   isForwarded = false,
+  replyTo = null,
 }) => {
   const conversation = await Conversation.findById(conversationId);
   if (!conversation) {
@@ -172,6 +178,7 @@ export const saveChatMessage = async ({
     text: trimmedText,
     attachments: Array.isArray(attachments) ? attachments : [],
     isForwarded: Boolean(isForwarded),
+    replyTo: replyTo || null,
     isRead: isRecipientInRoom,
   });
 
@@ -207,7 +214,13 @@ export const saveChatMessage = async ({
   conversation.updatedAt = new Date();
   await conversation.save();
 
-  const populatedMessage = await Message.findById(message._id).populate('sender', 'name role');
+  const populatedMessage = await Message.findById(message._id)
+    .populate('sender', 'name role')
+    .populate({
+      path: 'replyTo',
+      select: 'text attachments isDeleted sender',
+      populate: { path: 'sender', select: 'name role' },
+    });
 
   // Always create or update message notification for the recipient
   createOrGroupMessageNotification({
@@ -371,7 +384,13 @@ export const reactToMessage = async ({ messageId, userId, emoji }) => {
 
   await message.save();
 
-  const populatedMessage = await Message.findById(message._id).populate('sender', 'name role');
+  const populatedMessage = await Message.findById(message._id)
+    .populate('sender', 'name role')
+    .populate({
+      path: 'replyTo',
+      select: 'text attachments isDeleted sender',
+      populate: { path: 'sender', select: 'name role' },
+    });
 
   return {
     messageId: message._id.toString(),
@@ -430,7 +449,13 @@ export const deleteChatMessage = async ({ messageId, userId, deleteFor = 'everyo
       }
     }
 
-    const populatedMessage = await Message.findById(message._id).populate('sender', 'name role');
+    const populatedMessage = await Message.findById(message._id)
+    .populate('sender', 'name role')
+    .populate({
+      path: 'replyTo',
+      select: 'text attachments isDeleted sender',
+      populate: { path: 'sender', select: 'name role' },
+    });
 
     return {
       type: 'everyone',

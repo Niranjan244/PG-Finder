@@ -65,7 +65,7 @@ export const sendMessageViaRest = async (req, res, next) => {
     res.setHeader('Expires', '0');
 
     const { conversationId } = req.params;
-    const { text = '', attachments = [], isForwarded = false } = req.body;
+    const { text = '', attachments = [], isForwarded = false, replyTo = null } = req.body;
 
     if ((!text || !text.trim()) && (!attachments || attachments.length === 0)) {
       return res.status(400).json({ success: false, message: 'Message text or attachment is required' });
@@ -77,6 +77,7 @@ export const sendMessageViaRest = async (req, res, next) => {
       text,
       attachments,
       isForwarded,
+      replyTo,
     });
 
     try {
